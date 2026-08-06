@@ -1,0 +1,828 @@
+/* VoiceRadar-Discord */
+
+.vr-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    /* so the status chip can be pushed to the far end of the title */
+    width: 100%;
+}
+
+.vr-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 0;
+    position: sticky;
+    top: 0;
+    background: var(--modal-background, var(--background-primary));
+    z-index: 2;
+}
+
+.vr-search {
+    flex: 1 1 200px;
+    min-width: 160px;
+    height: 38px;
+    padding: 0 12px;
+    border-radius: 8px;
+
+    /* both of these names are gone in the redesign, so there would be no field to see */
+    background: var(--input-background, var(--background-secondary, rgb(255 255 255 / 6%)));
+    border: 1px solid var(--background-modifier-accent, rgb(255 255 255 / 8%));
+    color: var(--text-normal);
+    font-size: 15px;
+    outline: none;
+}
+
+.vr-search:focus {
+    box-shadow: 0 0 0 1px var(--brand-experiment, #5865f2);
+}
+
+.vr-chip {
+    height: 38px;
+    padding: 0 14px;
+    border: 1px solid var(--background-modifier-accent, rgb(255 255 255 / 10%));
+    border-radius: 8px;
+    background: var(--background-secondary, var(--background-base-low, rgb(255 255 255 / 6%)));
+    color: var(--text-normal);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.vr-chip:hover {
+    background: var(--background-modifier-hover);
+}
+
+.vr-chip:active {
+    transform: scale(0.97);
+}
+
+.vr-chip:focus-visible {
+    outline: 2px solid var(--brand-experiment, #5865f2);
+    outline-offset: 1px;
+}
+
+/* same rule as the icon buttons, where "on" has to survive the cursor sitting on it */
+.vr-chip.vr-chip-active,
+.vr-chip.vr-chip-active:hover {
+    border-color: var(--brand-experiment, #5865f2);
+    background: var(--brand-experiment, #5865f2);
+    color: #fff;
+}
+
+.vr-chip.vr-chip-active:hover {
+    filter: brightness(1.1);
+}
+
+/*
+ * What the plugin is doing, at the right edge of the title. The title itself has to take the whole
+ * width for that, since it is a flex row and the chip is pushed to the end of it.
+ *
+ * It is a button, so it also has to stop looking like Discord's own header text.
+ */
+.vr-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+    padding: 3px 10px;
+    border: none;
+    border-radius: 10px;
+    background: var(--background-modifier-accent, rgb(255 255 255 / 10%));
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.vr-status-dot-small {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentcolor;
+    flex: 0 0 auto;
+}
+
+.vr-status-good {
+    color: var(--status-positive, #23a55a);
+}
+
+.vr-status-waiting {
+    color: var(--status-warning, #f0b232);
+}
+
+.vr-status-bad {
+    color: var(--status-danger, #f23f43);
+}
+
+.vr-status:hover {
+    filter: brightness(1.25);
+}
+
+.vr-health {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 4px 0 8px;
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+/* the heading that splits "what the plugin does" from "what it runs inside" */
+.vr-health-group {
+    margin: 4px 0 -4px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--header-secondary);
+}
+
+.vr-health-group:not(:first-child) {
+    margin-top: 10px;
+}
+
+.vr-health-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 13.5px;
+    min-width: 0;
+    max-width: 100%;
+}
+
+/* the dot sits on the first line of the sentence rather than in the middle of the block */
+.vr-health-row .vr-status-dot-small {
+    margin-top: 5px;
+}
+
+/*
+ * Its own class rather than the row hint's. That one is a single line that ends in an ellipsis,
+ * which turned these whole sentences into a horizontal scrollbar.
+ */
+.vr-health-detail {
+    color: var(--text-muted);
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+/* without this the sentence refuses to wrap and pushes the window wider instead */
+.vr-health-row > div {
+    min-width: 0;
+}
+
+.vr-health-name {
+    font-weight: 600;
+    color: var(--header-primary);
+    margin-bottom: 2px;
+}
+
+/* the same words the chip's colour stands for, for a reader who wants them spelled out */
+.vr-status-line {
+    margin: 0 2px 10px;
+    font-size: 12.5px;
+    color: var(--text-muted);
+}
+
+/* the line borrows the state colours, but only as a tint, since it is a whole sentence */
+.vr-status-line.vr-status-bad {
+    color: var(--status-danger, #f23f43);
+}
+
+.vr-status-line.vr-status-waiting {
+    color: var(--status-warning, #f0b232);
+}
+
+.vr-status-line.vr-status-good {
+    color: var(--text-muted);
+}
+
+/* one list at a time, so the row keeps the whole width it was drawn for */
+.vr-tabs {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 4px 2px 12px;
+}
+
+.vr-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    height: 38px;
+    padding: 0 15px;
+    border: 1px solid var(--background-modifier-accent, rgb(255 255 255 / 10%));
+    border-radius: 8px;
+    background: var(--background-secondary, var(--background-base-low, rgb(255 255 255 / 6%)));
+    color: var(--text-normal);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.vr-tab:hover {
+    background: var(--background-modifier-hover, rgb(255 255 255 / 10%));
+}
+
+.vr-tab:active {
+    transform: scale(0.97);
+}
+
+/* the open tab has to stay obvious with the cursor sitting on it */
+.vr-tab.vr-tab-active,
+.vr-tab.vr-tab-active:hover {
+    background: var(--brand-experiment, #5865f2);
+    border-color: var(--brand-experiment, #5865f2);
+    color: #fff;
+}
+
+.vr-tab-count {
+    padding: 1px 7px;
+    border-radius: 9px;
+    background: var(--background-modifier-accent, rgb(255 255 255 / 10%));
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+/* on a filled tab the badge has to read against the brand colour, not against the row */
+.vr-tab-active .vr-tab-count {
+    background: rgb(255 255 255 / 25%);
+    color: #fff;
+}
+
+/* how many of them are in voice this second, in the same green the live rows are marked with */
+.vr-tab-live,
+.vr-tab-active .vr-tab-live {
+    background: var(--status-positive, #23a55a);
+    color: #fff;
+}
+
+/* only this list is empty, the other tab still has people, so no big empty state */
+.vr-empty-tab {
+    padding: 26px 0;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
+.vr-section {
+    margin-bottom: 14px;
+}
+
+.vr-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 14px;
+    margin-bottom: 8px;
+    border-radius: 12px;
+    border-left: 3px solid transparent;
+
+    /* renamed by the redesign, and without a fallback the card has no background at all */
+    background: var(--background-secondary, var(--background-base-low, rgb(255 255 255 / 5%)));
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.vr-row:hover {
+    background: var(--background-secondary-alt, var(--background-modifier-hover, rgb(255 255 255 / 9%)));
+}
+
+.vr-row-live {
+    border-left-color: var(--status-positive, #23a55a);
+}
+
+.vr-row-here {
+    border-left-color: var(--brand-experiment, #5865f2);
+}
+
+.vr-row-draggable {
+    cursor: grab;
+}
+
+.vr-row-dragging {
+    opacity: 0.45;
+    cursor: grabbing;
+}
+
+/*
+ * The gap the dragged row would land in. Which side depends on the direction, since dragging downwards
+ * puts it after the row you release on, upwards before it, so the line has to move with that or it
+ * points at a gap the row will not go into.
+ */
+.vr-row-drop-before {
+    box-shadow: 0 -2px 0 0 var(--brand-experiment, #5865f2);
+}
+
+.vr-row-drop-after {
+    box-shadow: 0 2px 0 0 var(--brand-experiment, #5865f2);
+}
+
+
+.vr-avatar-wrap {
+    position: relative;
+    flex: 0 0 auto;
+    cursor: pointer;
+    line-height: 0;
+}
+
+.vr-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.vr-status-dot {
+    position: absolute;
+    right: -1px;
+    bottom: -1px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+
+    /* the ring reads as a hole punched in the card, so it follows the card's own colour */
+    border: 2px solid var(--background-secondary, var(--background-base-low, #24252a));
+}
+
+/* the ring is meant to read as a hole punched in the row, so it has to follow the row's own colour */
+.vr-row:hover .vr-status-dot {
+    border-color: var(--background-secondary-alt, var(--background-modifier-hover));
+}
+
+/* hollow ring, meaning presence for this person was never sent by Discord */
+.vr-status-unknown {
+    background: transparent;
+    box-shadow: inset 0 0 0 2px var(--status-offline, #80848e);
+}
+
+.vr-info {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.vr-name-line {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
+.vr-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--header-primary);
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.vr-name:hover {
+    text-decoration: underline;
+}
+
+.vr-badge {
+    padding: 2px 6px;
+    border-radius: 5px;
+    background: var(--background-modifier-accent);
+    color: var(--text-muted);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+}
+
+.vr-badge-auto {
+    background: var(--status-danger, #f23f43);
+    color: #fff;
+}
+
+.vr-badge-here {
+    background: var(--brand-experiment, #5865f2);
+    color: #fff;
+}
+
+/* device icons, one per platform the person is online from, tinted by that platform's status */
+.vr-platforms {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    flex: 0 0 auto;
+}
+
+.vr-platform {
+    display: inline-flex;
+    align-items: center;
+
+    /* the svg is inline by default, and its baseline gap would push the name line around */
+    line-height: 0;
+}
+
+.vr-meta-line {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    font-size: 13.5px;
+    color: var(--text-normal);
+}
+
+.vr-channel {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+    color: var(--status-positive, #23a55a);
+    cursor: pointer;
+}
+
+.vr-channel-name {
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Discord renders channel mentions as its own chip, so keep it readable inside the row */
+.vr-channel [class*="mention"] {
+    font-weight: 600;
+    max-width: 320px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.vr-vc-tooltip {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-width: 320px;
+    font-size: 13px;
+}
+
+.vr-vc-tooltip-title {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.vr-vc-tooltip-channel {
+    font-weight: 700;
+    margin-bottom: 2px;
+}
+
+.vr-vc-tooltip-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* shared by the channel tooltip and the panel button tooltip */
+.vr-tip-avatar {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex: 0 0 auto;
+}
+
+.vr-vc-tooltip-hint {
+    margin-top: 4px;
+    padding-top: 4px;
+    border-top: 1px solid var(--background-modifier-accent);
+    color: var(--text-muted);
+    font-size: 11px;
+    white-space: normal;
+}
+
+.vr-channel-locked {
+    color: var(--text-muted);
+}
+
+.vr-state-icon {
+    color: var(--text-muted);
+}
+
+/*
+ * The live filter is about who is in a voice channel, so switched on it takes the same green the
+ * live counts and the live rows are marked with, rather than the brand blue every other chip uses.
+ * A filter that hides people should not look like the chips that only change a setting.
+ */
+.vr-chip.vr-chip-live.vr-chip-active,
+.vr-chip.vr-chip-live.vr-chip-active:hover {
+    border-color: var(--status-positive, #23a55a);
+    background: var(--status-positive, #23a55a);
+}
+
+.vr-chip-return {
+    border-color: var(--status-warning, #f0b232);
+    color: var(--status-warning, #f0b232);
+}
+
+.vr-chip-queue {
+    border-color: var(--status-warning, #f0b232);
+    color: var(--status-warning, #f0b232);
+}
+
+.vr-stream-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 1px 7px;
+    border-radius: 5px;
+    background: var(--status-danger, #f23f43);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    flex: 0 0 auto;
+}
+
+.vr-stream-badge:hover {
+    filter: brightness(1.12);
+}
+
+.vr-stream-tooltip {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-width: 320px;
+}
+
+.vr-stream-tooltip-title {
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.vr-stream-preview {
+    width: 300px;
+    max-width: 100%;
+    aspect-ratio: 16 / 9;
+    border-radius: 6px;
+    object-fit: cover;
+    display: block;
+    background: var(--background-tertiary);
+}
+
+.vr-stream-placeholder {
+    display: grid;
+    place-items: center;
+    width: 300px;
+    max-width: 100%;
+    aspect-ratio: 16 / 9;
+    border-radius: 6px;
+    background: var(--background-tertiary);
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.vr-stream-tooltip-hint {
+    color: var(--text-muted);
+    font-size: 11px;
+}
+
+/*
+ * The activity is a chip in the colour of what it is, because a grey line of text next to a grey
+ * line of text is one more thing to read rather than something you can see at a glance. The colours
+ * are the ones each thing already has elsewhere, so a green chip means music without being told.
+ */
+.vr-activity {
+    padding: 1px 8px;
+    border-radius: 6px;
+    background: color-mix(in srgb, var(--vr-activity-colour) 16%, transparent);
+    color: var(--vr-activity-colour);
+    font-size: 12.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 0 1 auto;
+}
+
+.vr-activity-playing {
+    --vr-activity-colour: var(--brand-experiment, #5865f2);
+}
+
+.vr-activity-listening {
+    --vr-activity-colour: #1db954;
+}
+
+.vr-activity-streaming {
+    --vr-activity-colour: #b083f0;
+}
+
+.vr-activity-watching {
+    --vr-activity-colour: #eb459e;
+}
+
+.vr-activity-competing {
+    --vr-activity-colour: var(--status-warning, #f0b232);
+}
+
+/* somebody's own words, so it stays quiet and only gets the shape */
+.vr-activity-custom {
+    --vr-activity-colour: var(--text-muted);
+}
+
+.vr-dim {
+    color: var(--text-muted);
+    font-weight: 400;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.vr-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex: 0 0 auto;
+}
+
+/*
+ * Drawn as a real button rather than a bare icon. On its own the icon disappeared into the row,
+ * and a control you have to hunt for reads as decoration.
+ */
+.vr-action {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--background-modifier-accent, rgb(255 255 255 / 8%));
+    border-radius: 8px;
+    background: var(--background-modifier-selected, rgb(255 255 255 / 6%));
+    color: var(--interactive-active, var(--header-primary));
+    cursor: pointer;
+    transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease, transform 0.08s ease;
+}
+
+/* hover is a soft hint, not a spotlight */
+.vr-action:hover {
+    background: var(--brand-experiment, #5865f2);
+    border-color: var(--brand-experiment, #5865f2);
+    color: #fff;
+}
+
+/* pressing gives real feedback, so a click never looks like "nothing happened" */
+.vr-action:active {
+    background: var(--background-modifier-selected);
+    transform: scale(0.9);
+}
+
+.vr-action:focus-visible {
+    outline: 2px solid var(--brand-experiment, #5865f2);
+    outline-offset: 1px;
+}
+
+/*
+ * A toggled-on button must stay recognisable while the cursor sits on it, because hovering used to
+ * repaint it in the plain hover colour, so after clicking you could not tell on from off.
+ */
+.vr-action.vr-action-active,
+.vr-action.vr-action-active:hover {
+    color: #fff;
+    background: var(--brand-experiment, #5865f2);
+    border-color: var(--brand-experiment, #5865f2);
+}
+
+/* undo stands out from the neutral row so a misclick is obvious and one click away from fixed */
+.vr-action.vr-action-warn,
+.vr-action.vr-action-warn:hover {
+    color: #fff;
+    background: var(--status-warning, #f0b232);
+    border-color: var(--status-warning, #f0b232);
+}
+
+.vr-action.vr-action-danger:hover {
+    color: #fff;
+    background: var(--status-danger, #f23f43);
+    border-color: var(--status-danger, #f23f43);
+}
+
+.vr-action-disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+/* the button stays hoverable so its tooltip can explain why it is off, but it must not react */
+.vr-action-disabled:hover,
+.vr-action-disabled:active {
+    background: transparent;
+    color: var(--interactive-normal);
+    transform: none;
+}
+
+/* amber by default, since most of what an update moves is a part rather than the whole */
+.vr-warning {
+    margin-bottom: 12px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border-left: 3px solid var(--status-warning, #f0b232);
+    background: var(--background-secondary);
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+/* red is kept for what stops the plugin doing its job at all */
+.vr-warning-bad {
+    border-left-color: var(--status-danger, #f23f43);
+}
+
+.vr-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 48px 24px;
+    text-align: center;
+    color: var(--header-secondary);
+}
+
+.vr-panel-icon {
+    position: relative;
+    display: grid;
+    place-items: center;
+}
+
+/*
+ * Only ever seen when a Discord update has moved the component the account panel's own buttons are
+ * made of. It copies their size and their hover, so the row does not go crooked on the one day this
+ * is on screen.
+ */
+.vr-panel-fallback {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--interactive-normal);
+    cursor: pointer;
+}
+
+.vr-panel-fallback:hover {
+    background: var(--background-modifier-selected, rgb(255 255 255 / 6%));
+    color: var(--interactive-hover);
+}
+
+.vr-panel-fallback:focus-visible {
+    outline: 2px solid var(--brand-experiment, #5865f2);
+    outline-offset: -2px;
+}
+
+.vr-panel-badge {
+    position: absolute;
+    right: -5px;
+    bottom: -4px;
+    min-width: 13px;
+    height: 13px;
+    padding: 0 3px;
+    border-radius: 7px;
+    background: var(--status-positive, #23a55a);
+    color: #fff;
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 13px;
+    text-align: center;
+}
+
+.vr-panel-tooltip {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    max-width: 260px;
+    font-size: 12px;
+}
+
+.vr-panel-tooltip-title {
+    font-weight: 700;
+    margin-bottom: 2px;
+}
+
+.vr-panel-tooltip-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}

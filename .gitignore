@@ -1,0 +1,6 @@
+node_modules/
+dist/
+*.log
+
+# tests, kept locally rather than in the repository
+__tests__/
