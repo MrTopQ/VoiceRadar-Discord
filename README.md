@@ -15,7 +15,9 @@ Vencord plugin. Remembers everyone you shared a voice channel with and shows whe
   a queue on full ones, and hidden channels still name their members on hover.
 - **Silent join** (off by default). Joins the plugin makes start with your mic off.
 - **Auto-join.** Pick one person and you follow them, including into a full channel once a slot
-  opens, and the wait moves with them. Walking out yourself pauses it until they move elsewhere.
+  opens, and the wait moves with them. Walking out of their channel, or out of voice altogether,
+  leaves that channel alone until they move somewhere else. Somebody else disconnecting you or moving
+  you out is undone instead, up to six times a minute.
 - **Queue.** Holds your place in a full channel until you get in or cancel.
 - **Notifications.** A bell per person, naming the channel. Several joins collapse into one. A click
   opens their row and brings Discord forward.

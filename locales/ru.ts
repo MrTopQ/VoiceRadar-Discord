@@ -366,6 +366,8 @@ export const ru: Messages = {
     joinedModalGone: "Этих людей больше нет в радаре",
     followingUser: (name: string, channel: string, silent: boolean) =>
         `🎯 Следуем за ${name} → ${channel}${silent ? " (без микрофона)" : ""}`,
+    followGaveUpBeingRemoved: (name: string) =>
+        `Автозаход выключен, вас отключают быстрее, чем следование за ${name} возвращает обратно`,
 
     /* ── действия модератора ─────────────────────────────────────────────────────────────── */
     refusalNotConnected: (name: string) => `${name} не в голосовом канале`,

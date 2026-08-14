@@ -384,6 +384,8 @@ export const en = {
     joinedModalGone: "These people are no longer on the radar",
     followingUser: (name: string, channel: string, silent: boolean) =>
         `🎯 Following ${name} → ${channel}${silent ? " (muted)" : ""}`,
+    followGaveUpBeingRemoved: (name: string) =>
+        `Auto-join off, you are being disconnected faster than following ${name} can put you back`,
 
     /* ── moderator actions ───────────────────────────────────────────────────────────────── */
     refusalNotConnected: (name: string) => `${name} is not connected to voice`,

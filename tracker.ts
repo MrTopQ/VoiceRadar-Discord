@@ -34,8 +34,23 @@ import { keepUserHere } from "./magnet";
 import { pruneMoveHistory } from "./moveHistory";
 import { ensureUserCachedSpaced, getAvatarUrl, getStoredName, getUserDisplayName } from "./names";
 import { cancelQueue, checkQueue, getQueueEntry, type QueueEntry, queueForChannel } from "./queue";
+import {
+    canTellMyMovesApart,
+    isMyMoveInFlight,
+    startWatchingMyChoices,
+    stopWatchingMyChoices,
+    wasMyOwnDoing
+} from "./selfMoves";
 import { getAutoJoinCooldownMs, settings } from "./settings";
-import { getAutoJoinTarget, getAutoPullTarget, getTrackedUser, touchUser, touchUsers, updateLastChannel } from "./store";
+import {
+    clearAutoJoin,
+    getAutoJoinTarget,
+    getAutoPullTarget,
+    getTrackedUser,
+    touchUser,
+    touchUsers,
+    updateLastChannel
+} from "./store";
 import { toast, ToastType } from "./toast";
 
 interface VoiceState {
@@ -58,6 +73,9 @@ export function getTrackerStats() {
 /** Our own snapshot of "who was where", because oldChannelId is not always present in the payload. */
 const lastChannels = new Map<string, string | null>();
 let lastAutoJoinAt = 0;
+
+/** Your own channel as of the last time anything here looked. See noteMyMove. */
+let myLastChannelId: string | null = null;
 
 /** Safety net on top of the flux events, so the history fills even if an update is missed. */
 const SWEEP_INTERVAL_MS = 8000;
@@ -108,6 +126,9 @@ export function setJoinedListOpener(open: ((userIds: string[]) => void) | null) 
 function primeSnapshot() {
     lastChannels.clear();
     for (const [userId, channelId] of getVoiceSnapshot()) lastChannels.set(userId, channelId);
+
+    // yourself included, and for the same reason. A reconnect must not read as having been moved
+    myLastChannelId = getMyChannelId();
 }
 
 function handleConnectionOpen() {
@@ -237,7 +258,7 @@ function scheduleNotify(userId: string) {
 let refusedChannelId: string | null = null;
 
 /**
- * The channel you walked out of while the target was still in it.
+ * The channel the target was in when you last said no to it.
  *
  * The marker means be where they are, and reading that from the live state is what makes it work on
  * somebody who has no reason to move again. It also made leaving impossible. Stepping out of their
@@ -249,8 +270,28 @@ let refusedChannelId: string | null = null;
  * into it stops. It says nothing about the next one, so the moment they move anywhere else the
  * marker means what it meant before. That is the difference between following somebody and being
  * tethered to them.
+ *
+ * Leaving voice altogether is the same answer, and it used to be recorded only when you left *their*
+ * channel. Every other way of being out of voice with a follow armed left nothing behind, so a target
+ * who hopped once dragged you back in although you had just walked out. Where you were standing was
+ * never the point: you left while they were in that room, and their next move is what ends it.
  */
 let declinedChannelId: string | null = null;
+
+/**
+ * Somebody else disconnecting you or moving you out is the one thing here that is not an answer, so
+ * the follow undoes it. Two people can play that game forever, and past this many returns in a minute
+ * whoever is doing it plainly means it, so the follow gives up and says so rather than arguing in a
+ * loop several times a minute.
+ */
+const FORCED_RETURN_WINDOW_MS = 60_000;
+const MAX_FORCED_RETURNS = 6;
+let forcedReturns: number[] = [];
+
+function isBeingRemovedTooOften(): boolean {
+    forcedReturns = forcedReturns.filter(at => Date.now() - at < FORCED_RETURN_WINDOW_MS);
+    return forcedReturns.length >= MAX_FORCED_RETURNS;
+}
 
 /**
  * Where the auto-join target is, and what it takes to be there too.
@@ -305,20 +346,28 @@ export function keepFollowing() {
      */
     if (declinedChannelId !== where.channelId) declinedChannelId = null;
 
+    const myChannelId = getMyChannelId();
+
+    /*
+     * Already with them, which is the whole point of the marker.
+     *
+     * Being in the room also spends anything you once said about it, and leaving that behind was
+     * enough to break the other half of this. Walk out, walk back in by hand, and the marker still
+     * read "not this room", so being disconnected from it by somebody else was answered by staying
+     * out, on the strength of a decision you had already reversed.
+     */
+    if (where.channelId === myChannelId) {
+        declinedChannelId = null;
+        dropFollowQueue();
+        return;
+    }
+
     /*
      * You are not in their room because you chose not to be. Checked before everything below,
      * including the wait for a full one, since a queue that survives your leaving would take you
      * back the moment a slot opened and undo the same decision a step later.
      */
     if (declinedChannelId === where.channelId) {
-        dropFollowQueue();
-        return;
-    }
-
-    const myChannelId = getMyChannelId();
-
-    // already with them, which is the whole point of the marker
-    if (where.channelId === myChannelId) {
         dropFollowQueue();
         return;
     }
@@ -447,28 +496,112 @@ function handleUserJoined(userId: string, channelId: string) {
 export function forgetFollowRefusals() {
     refusedChannelId = null;
     declinedChannelId = null;
+
+    // and a count of returns, which belongs to the follow that earned it rather than to the next one
+    forcedReturns = [];
 }
 
 /**
- * Notices that you have just walked out on the target.
+ * Notices where you went, and whether you went there yourself.
  *
- * Answered from where you came *from* rather than from where they are now, and the difference is
- * the whole of it. "I am not with them" is true of every moment before the marker has caught up,
- * and reading that as a decision would stop a follow that had simply not happened yet. "I was with
- * them and now I am not" cannot be anything else.
+ * Read from the live state at the end of a batch rather than from any one event in it, because a
+ * move between servers is two voice states and the one in the middle says you are out of voice. Read
+ * per event, that middle answered "left voice" for a move you were halfway through making.
  *
- * Leaving voice and stepping into another channel are the same answer, so both count. Being moved
- * out by a moderator counts too, and deliberately so: putting yourself straight back would be
- * arguing with them several times a minute.
+ * What you did with a follow armed is one of two things. Going somewhere that is not their channel,
+ * out of voice included, says "not this room" and nothing further, so the room is remembered and
+ * their next move is followed exactly as before. Being disconnected or dragged elsewhere by somebody
+ * else says nothing at all, because you did not say it: that is the one case the follow is for, so it
+ * puts you back.
  */
-function noteMyMove(from: string | null, to: string | null) {
-    const target = getAutoJoinTarget();
-    if (!target) return;
+function noteMyMove() {
+    const to = getMyChannelId();
+    if (to === myLastChannelId) return;
 
+    /*
+     * Half of a switch between servers, where the state for the old one has arrived and the new one
+     * has not. Nothing is decided until the move you asked for lands or the window on it runs out.
+     */
+    if (!to && isMyMoveInFlight()) return;
+
+    const from = myLastChannelId;
+    myLastChannelId = to;
+
+    /*
+     * Everything below is about a follow, so the master switch decides whether any of it is worth
+     * recording. Nothing follows you anywhere while it is off, which leaves nothing to decline and
+     * nothing to undo, and turning it back on is an instruction of its own.
+     */
+    const target = getAutoJoinTarget();
+    if (!target || !settings.store.autoJoinEnabled) return;
+
+    // they are not in voice, so there is no room to have an opinion about and nowhere to be put back
     const theirs = getVoiceInfo(target.id)?.channelId ?? null;
     if (!theirs) return;
 
-    if (from === theirs && to !== theirs) declinedChannelId = theirs;
+    /*
+     * A move nobody can account for is taken to be yours. Everything under this reads silence as
+     * somebody else having moved you, so before the first choice of a session, and after an update
+     * that renamed the event behind it, that silence must not be read at all. Getting it the other
+     * way round would put you back into a channel you had just walked out of.
+     */
+    if (wasMyOwnDoing(to) || !canTellMyMovesApart()) {
+        /*
+         * Out of voice, which is the same answer as stepping into the next channel along and is
+         * usually a plainer one. Recorded against the room they are in rather than the one you were
+         * in, because you can be out of their channel for a dozen reasons and out of voice for only
+         * one. Their next move is what ends it, exactly as it does for a room you stepped out of.
+         */
+        if (!to) {
+            /*
+             * The queue goes with it. A wait for their channel that survived your leaving would pull
+             * you back into voice the moment a slot opened, undoing the same decision a step later.
+             *
+             * Silently, because you are the one who did it. A toast is worth its space where the
+             * plugin acts on its own or stops for a reason you cannot see, and neither is true of
+             * walking out of a channel a second ago.
+             */
+            declinedChannelId = theirs;
+            dropFollowQueue();
+            return;
+        }
+
+        /*
+         * Answered from where you came *from*, and the difference is the whole of it. "I am not with
+         * them" is true of every moment before the follow has caught up, and reading that as a
+         * decision would stop a follow that had simply not happened yet. "I was with them and now I
+         * am not" cannot be anything else.
+         */
+        if (from === theirs && to !== theirs) declinedChannelId = theirs;
+        return;
+    }
+
+    /*
+     * Right after a reconnect Discord replays voice states, your own among them, and a channel that
+     * appears or disappears in that replay is the client catching up rather than anybody doing
+     * anything to you. Your own choices above are still safe to read, because a click is a click
+     * whenever it happened.
+     */
+    if (Date.now() < quietUntil) return;
+
+    // somebody else moved you, but not out of anything the follow was holding on to
+    if (from !== theirs || to === theirs) return;
+
+    if (isBeingRemovedTooOften()) {
+        clearAutoJoin();
+        dropFollowQueue();
+        toast(T.followGaveUpBeingRemoved(getUserDisplayName(target.id, target.name)), ToastType.FAILURE);
+        return;
+    }
+
+    forcedReturns.push(Date.now());
+
+    /*
+     * The cooldown exists to space out following somebody who hops, and this is not that. It is one
+     * move made by one person, answered once, and waiting five seconds to answer it would leave you
+     * sitting outside for the length of the cooldown after every disconnect.
+     */
+    lastAutoJoinAt = 0;
 }
 
 function handleVoiceStateUpdates(event: { voiceStates: VoiceState[]; }) {
@@ -500,8 +633,6 @@ function processVoiceStates({ voiceStates }: { voiceStates: VoiceState[]; }) {
         if (channelId === knownOld) continue;
 
         if (userId === me.id) {
-            noteMyMove(knownOld, channelId);
-
             if (channelId) {
                 rememberChannelMates(channelId);
                 // you moved, so whoever is on the magnet comes with you
@@ -516,6 +647,9 @@ function processVoiceStates({ voiceStates }: { voiceStates: VoiceState[]; }) {
         if (channelId) handleUserJoined(userId, channelId);
     }
 
+    // where you ended up, decided once from the live state rather than from any single event in the
+    // batch, and before anything below can act on it. See noteMyMove
+    noteMyMove();
     // somebody just moved, which is exactly when a slot in a full channel can appear
     checkQueue();
     // once per batch rather than once per event, and from where the target is rather than from
@@ -561,6 +695,8 @@ export function startTracking() {
 
     FluxDispatcher.subscribe("VOICE_STATE_UPDATES", handleVoiceStateUpdates);
     FluxDispatcher.subscribe("CONNECTION_OPEN", handleConnectionOpen);
+    // what tells your own moves apart from the ones made for you. See noteMyMove
+    startWatchingMyChoices();
 
     sweepCurrentChannel();
     sweepInterval = setInterval(sweepCurrentChannel, SWEEP_INTERVAL_MS);
@@ -570,6 +706,7 @@ export function startTracking() {
 function teardownTracking() {
     FluxDispatcher.unsubscribe("VOICE_STATE_UPDATES", handleVoiceStateUpdates);
     FluxDispatcher.unsubscribe("CONNECTION_OPEN", handleConnectionOpen);
+    stopWatchingMyChoices();
 
     if (sweepInterval) {
         clearInterval(sweepInterval);
@@ -588,11 +725,16 @@ function teardownTracking() {
     lastChannels.clear();
     lastAutoJoinAt = 0;
     quietUntil = 0;
+    myLastChannelId = null;
 
     // both of these are answers about one channel in one session, and neither is worth carrying
     // into the next one
     refusedChannelId = null;
     declinedChannelId = null;
+
+    // nor is a count of somebody else's doing. A plugin switched back on starts from where you are
+    // now, not from what happened before it stopped
+    forcedReturns = [];
 
     /*
      * The counters above the window reads are about a session, and startTracking already gives
