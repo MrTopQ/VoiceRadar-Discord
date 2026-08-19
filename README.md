@@ -20,7 +20,8 @@ Vencord plugin. Remembers everyone you shared a voice channel with and shows whe
   you out is undone instead, up to six times a minute.
 - **Queue.** Holds your place in a full channel until you get in or cancel.
 - **Notifications.** A bell per person, naming the channel. Several joins collapse into one. A click
-  opens their row and brings Discord forward.
+  opens their row and brings Discord forward. A sound goes with it, which is what reaches you over a
+  fullscreen game, where Windows swallows the notification itself.
 - **Stream preview.** `LIVE` badge, thumbnail on hover, full size on click.
 - **Search.** Nickname, display name or username, plus a chip for whoever is in voice this second.
 - **Hotkey.** `Alt+2` opens and closes the window. Rebindable, and claimable system wide.
@@ -48,7 +49,7 @@ settings, Plugins. Without git, download the ZIP into `src/userplugins/` by hand
 
 ## Settings
 
-Sixteen, in panel order. Vencord prints a longer description beside each.
+Eighteen, in panel order. Vencord prints a longer description beside each.
 
 | Setting | Control | Default | What it does |
 |---|---|---|---|
@@ -60,6 +61,8 @@ Sixteen, in panel order. Vencord prints a longer description beside each.
 | Only follow when idle | switch | off | Never pulls you out of a call |
 | Auto-join cooldown | seconds | 5 | Gap between two auto-joins, clamped to 2s and 5min |
 | Notification style | dropdown | Notification | Corner notification, Toast, or Both |
+| Join sound | dropdown | Discord join blip | Also the Discord ping, the plugin's own chime, or off. Heard over a fullscreen game |
+| Join sound volume | slider, 0 to 100 | 60 | How loud that sound is |
 | Queue for full channels | switch | on | Auto-join only. Queueing by hand works either way |
 | Track automatically | switch | on | Remembers everyone you share a voice channel with |
 | Servers watched for voice | slider, 10 to 200 | 100 | Discord only sends voice states for subscribed servers, so joins past this number go unseen. Your people's servers come first, and the window says how many did not fit |
@@ -75,8 +78,9 @@ Sixteen, in panel order. Vencord prints a longer description beside each.
   Discord and to nothing else.
 - One auto-join target or one magnet at a time. Arming either disarms the other and drops your queue.
 - Requests go through the client's own REST and gateway paths, spaced out: names 250ms apart,
-  statuses in one batch of up to 100 people, one server subscription every 1.2s, moves 600ms apart. A
-  rate limit waits itself out once, and the magnet stops after ten returns in a minute.
+  statuses in one batch of up to 100 people, one server subscription every 1.2s, and group moves at
+  the pace you pick. A rate limit waits itself out once, and the magnet stops after ten returns in a
+  minute.
 - The status chip opens a page listing every feature, the Discord internals behind it and whether
   they still sit where the plugin expects, plus how much of Discord's voice picture the client holds.
 - The panel button coexists with other plugins that add buttons there.

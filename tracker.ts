@@ -42,6 +42,7 @@ import {
     wasMyOwnDoing
 } from "./selfMoves";
 import { getAutoJoinCooldownMs, settings } from "./settings";
+import { playJoinSound } from "./sound";
 import {
     clearAutoJoin,
     getAutoJoinTarget,
@@ -141,6 +142,8 @@ function notifyJoin(userId: string, channelId: string) {
     const where = describeChannel(channelId);
     const style = settings.store.notifyStyle;
 
+    playJoinSound();
+
     if (style === "toast" || style === "both") {
         toast(T.notifyToast(name, where), ToastType.MESSAGE);
     }
@@ -167,6 +170,8 @@ function notifyBatchJoined(entries: [string, string][]) {
         Math.max(0, names.length - MAX_NAMES_IN_SUMMARY)
     );
     const style = settings.store.notifyStyle;
+
+    playJoinSound();
 
     if (style === "toast" || style === "both") {
         toast(T.notifyBatchToast(shown), ToastType.MESSAGE);

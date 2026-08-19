@@ -44,6 +44,11 @@ export const MOVE_PACES: Record<MovePace, BatchPace> = {
 
 export const DEFAULT_MOVE_PACE: MovePace = "fast";
 
+export const CHIME_SOUND = "chime";
+export const DEFAULT_JOIN_SOUND = "user_join";
+export const JOIN_SOUNDS = ["off", DEFAULT_JOIN_SOUND, "message1", CHIME_SOUND];
+export const DEFAULT_JOIN_SOUND_VOLUME = 60;
+
 /**
  * How many servers may be asked to keep sending voice states.
  *
@@ -146,6 +151,29 @@ export const settings = definePluginSettings({
             ];
         }
     },
+    joinSound: {
+        type: OptionType.SELECT,
+        get description() {
+            return T.settingJoinSound;
+        },
+        get options() {
+            return [
+                { label: T.joinSoundJoin, value: DEFAULT_JOIN_SOUND, default: true },
+                { label: T.joinSoundPing, value: "message1" },
+                { label: T.joinSoundChime, value: CHIME_SOUND },
+                { label: T.joinSoundOff, value: "off" }
+            ];
+        }
+    },
+    joinSoundVolume: {
+        type: OptionType.SLIDER,
+        get description() {
+            return T.settingJoinSoundVolume;
+        },
+        markers: makeRange(0, 100, 10),
+        default: DEFAULT_JOIN_SOUND_VOLUME,
+        stickToMarkers: false
+    },
     queueForFullChannels: {
         type: OptionType.BOOLEAN,
         get description() {
@@ -237,6 +265,19 @@ export function getWatchedServerLimit(): number {
     const raw = Number(settings.store.watchedServerLimit);
     if (!Number.isFinite(raw)) return DEFAULT_WATCHED_SERVERS;
     return Math.min(MAX_WATCHED_SERVERS, Math.max(MIN_WATCHED_SERVERS, Math.floor(raw)));
+}
+
+export function getJoinSound(): string {
+    const raw = String(settings.store.joinSound ?? DEFAULT_JOIN_SOUND);
+    return JOIN_SOUNDS.includes(raw) ? raw : DEFAULT_JOIN_SOUND;
+}
+
+/** 0 to 1, the shape both the Discord player and the chime want. */
+export function getJoinSoundVolume(): number {
+    const raw = Number(settings.store.joinSoundVolume);
+    if (!Number.isFinite(raw)) return DEFAULT_JOIN_SOUND_VOLUME / 100;
+
+    return Math.min(100, Math.max(0, raw)) / 100;
 }
 
 export function getMovePace(): BatchPace {
