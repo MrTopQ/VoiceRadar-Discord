@@ -17,8 +17,10 @@
 */
 
 import { Parser, React, Tooltip } from "@webpack/common";
+import type { ReactNode } from "react";
 
 import { toggleAutoJoinFor, toggleMagnetFor } from "../actions";
+import { TtlCache } from "../cache";
 import { getMyChannelId, getMyGuildId, getVoiceInfo, openChannel, type VoiceInfo } from "../channels";
 import { T } from "../i18n";
 import { joinVoiceChannel } from "../join";
@@ -54,24 +56,37 @@ import { StreamIndicator } from "./StreamPreview";
 
 const TOOLTIP_MAX_MEMBERS = 10;
 
-/** Discord's own channel chip ("Guild › Channel"), with a plain-text fallback. */
-function ChannelMention({ voice }: { voice: VoiceInfo; }) {
+const MENTION_CACHE_MS = 60_000;
+const MENTION_MAX_ENTRIES = 200;
+const mentionCache = new TtlCache<ReactNode>(MENTION_CACHE_MS, MENTION_MAX_ENTRIES);
+
+function channelMention(channelId: string): ReactNode {
+    const cached = mentionCache.get(channelId);
+    if (cached !== undefined) return cached;
+
     try {
-        return <>{Parser.parse(`<#${voice.channelId}>`)}</>;
+        return mentionCache.set(channelId, Parser.parse(`<#${channelId}>`));
     } catch {
-        return (
-            <span className={cl("channel-name")}>
-                {voice.guildName ? `${voice.guildName} › ` : ""}{voice.channelName}
-            </span>
-        );
+        return mentionCache.set(channelId, null);
     }
 }
 
-function ChannelChip({ voice }: { voice: VoiceInfo; }) {
-    const memberIds = voice.participantIds;
-    const Icon = voice.canJoin && !voice.isFull ? SpeakerIcon : LockedSpeakerIcon;
+/** Discord's own channel chip ("Guild › Channel"), with a plain-text fallback. */
+function ChannelMention({ voice }: { voice: VoiceInfo; }) {
+    const parsed = channelMention(voice.channelId);
+    if (parsed) return <>{parsed}</>;
 
-    const tooltip = (
+    return (
+        <span className={cl("channel-name")}>
+            {voice.guildName ? `${voice.guildName} › ` : ""}{voice.channelName}
+        </span>
+    );
+}
+
+function ChannelTooltip({ voice }: { voice: VoiceInfo; }) {
+    const memberIds = voice.participantIds;
+
+    return (
         <div className={cl("vc-tooltip")}>
             <div className={cl("vc-tooltip-title")}>{T.tooltipInVoiceChat}</div>
             <div className={cl("vc-tooltip-channel")}>
@@ -100,6 +115,10 @@ function ChannelChip({ voice }: { voice: VoiceInfo; }) {
             </div>
         </div>
     );
+}
+
+function ChannelChip({ voice }: { voice: VoiceInfo; }) {
+    const Icon = voice.canJoin && !voice.isFull ? SpeakerIcon : LockedSpeakerIcon;
 
     // clicking the chip only navigates, joining is what the button on the right is for
     const onClick = (event: React.MouseEvent) => {
@@ -115,7 +134,7 @@ function ChannelChip({ voice }: { voice: VoiceInfo; }) {
     };
 
     return (
-        <Tooltip text={tooltip}>
+        <Tooltip text={<ChannelTooltip voice={voice} />}>
             {tooltipProps => (
                 <span
                     {...tooltipProps}

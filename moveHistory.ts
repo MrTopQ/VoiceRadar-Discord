@@ -16,14 +16,15 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-import { sleep } from "@utils/misc";
 import { ChannelStore } from "@webpack/common";
 
 import { getChannelName, getMyChannelId, getVoiceInfo } from "./channels";
 import { T } from "./i18n";
-import { batchToken, beginBatch, endBatch, isBatchCurrent, isBatchRunning, isRepeatClick, MOVE_SPACING_MS, moveMember } from "./moveApi";
+import { batchToken, beginBatch, endBatch, isBatchCurrent, isBatchRunning, isRepeatClick, moveMember } from "./moveApi";
+import { type BatchTally, runMoveBatch } from "./moveBatch";
 import { canMoveUser, moveAccessForChannel } from "./movePermissions";
 import { getUserDisplayName } from "./names";
+import { getMovePace } from "./settings";
 import { clearAutoPull, getAutoPullTarget } from "./store";
 import { toast, ToastType } from "./toast";
 
@@ -122,55 +123,41 @@ export async function sendBatchBack() {
     const token = batchToken();
     if (!beginBatch()) return;
 
-    let sent = 0;
-    let abandoned = 0;
+    let tally: BatchTally = { done: 0, abandoned: 0 };
 
     try {
-        for (const [index, userId] of ids.entries()) {
-            // the plugin was switched off mid-run, and every step of this is a visible move in
-            // somebody's server
-            if (!isBatchCurrent(token)) break;
+        tally = await runMoveBatch(
+            ids,
+            getMovePace(),
+            async userId => {
+                const target = getReturnChannel(userId);
+                const guildId = getVoiceInfo(userId)?.guildId;
+                if (!target || !guildId) return null;
 
-            const target = getReturnChannel(userId);
-            const guildId = getVoiceInfo(userId)?.guildId;
-            if (!target || !guildId) continue;
+                releaseMagnet(userId);
 
-            releaseMagnet(userId);
+                const outcome = await moveMember(guildId, userId, target.channelId, getUserDisplayName(userId), getMyChannelId());
 
-            // everyone goes to their own channel, not to one shared place
-            const outcome = await moveMember(guildId, userId, target.channelId, getUserDisplayName(userId), getMyChannelId());
-
-            if (outcome.ok) {
-                cameFrom.delete(userId);
-                sent++;
-            } else {
-                toast(outcome.problem!, ToastType.FAILURE);
-
-                // still rate limited after waiting it out, so something is wrong. Stop pushing
-                if (outcome.retryAfterMs) {
-                    abandoned = ids.length - index - 1;
-                    break;
+                if (outcome.ok) {
+                    cameFrom.delete(userId);
+                    return { ok: true, rateLimited: false };
                 }
-            }
 
-            await sleep(MOVE_SPACING_MS);
-        }
+                toast(outcome.problem!, ToastType.FAILURE);
+                return { ok: false, rateLimited: outcome.retryAfterMs > 0 };
+            },
+            () => isBatchCurrent(token)
+        );
     } finally {
         endBatch(token);
     }
 
-    // a run called off half way owes nobody a summary, since there is no window left to read it in
     if (!isBatchCurrent(token)) return;
+    if (!tally.done && !tally.abandoned) return;
 
-    // a run that sent nobody and gave up on somebody still owes an answer, since the refusal toast
-    // that said why is replaced by nothing at all
-    if (!sent && !abandoned) return;
-
-    // the refusal toast above is replaced by this one within seconds, so the count has to carry the
-    // reason too. "3 sent" on its own reads as if three were all that was asked for
     toast(
-        abandoned ? T.sentBatchBackStopped(sent, abandoned) : T.sentBatchBack(sent),
-        abandoned ? ToastType.MESSAGE : ToastType.SUCCESS
+        tally.abandoned ? T.sentBatchBackStopped(tally.done, tally.abandoned) : T.sentBatchBack(tally.done),
+        tally.abandoned ? ToastType.MESSAGE : ToastType.SUCCESS
     );
 }
 

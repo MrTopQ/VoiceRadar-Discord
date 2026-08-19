@@ -24,9 +24,9 @@ Vencord plugin. Remembers everyone you shared a voice channel with and shows whe
 - **Stream preview.** `LIVE` badge, thumbnail on hover, full size on click.
 - **Search.** Nickname, display name or username, plus a chip for whoever is in voice this second.
 - **Hotkey.** `Alt+2` opens and closes the window. Rebindable, and claimable system wide.
-- **Moderator mode** (off by default). Pull one person or a whole channel to you (20 per click,
-  confirmation past eight), undo a pull, magnet one person back each time they leave. Needs Move
-  Members in both channels of the same server.
+- **Moderator mode** (off by default). Pull one person or a whole channel to you (99 per click,
+  confirmation past eight, four moves at a time by default), undo a pull, magnet one person back each
+  time they leave. Needs Move Members in both channels of the same server.
 - **UI.** Account panel button with a counter, submenu in user menus and profiles, entry in voice and
   stage channel menus.
 - **Languages.** English and Russian, following Discord by default.
@@ -48,7 +48,7 @@ settings, Plugins. Without git, download the ZIP into `src/userplugins/` by hand
 
 ## Settings
 
-Fifteen, in panel order. Vencord prints a longer description beside each.
+Sixteen, in panel order. Vencord prints a longer description beside each.
 
 | Setting | Control | Default | What it does |
 |---|---|---|---|
@@ -64,6 +64,7 @@ Fifteen, in panel order. Vencord prints a longer description beside each.
 | Track automatically | switch | on | Remembers everyone you share a voice channel with |
 | Servers watched for voice | slider, 10 to 200 | 100 | Discord only sends voice states for subscribed servers, so joins past this number go unseen. Your people's servers come first, and the window says how many did not fit |
 | Keep timers awake | switch | on | Holds Discord's timers at normal pace in the background, so a join reaches you in seconds instead of minutes |
+| Group move speed | dropdown | Fast | Careful sends one move at a time, Fast four, Instant eight. Every move is a line in the server's audit log |
 | Moderator mode | switch | off | Adds pull, undo and magnet where you hold Move Members |
 | Panel button | switch | on | Goes away at once, needs a restart to come back |
 | Hotkey system wide | switch | off | The hotkey fires while Discord sits in the background and brings it up. Needs a full restart |

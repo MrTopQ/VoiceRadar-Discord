@@ -46,6 +46,10 @@ export const en = {
     settingTrackAutomatically: "Automatically remember everyone you share a voice channel with",
     settingWatchedServerLimit: "How many servers are watched for voice. Discord only sends voice states for servers the client is subscribed to, and a server past this number is one nobody can be seen joining. Servers your people were last seen in are always asked for first",
     settingKeepTimersAwake: "Keep Discord's timers running at their normal pace while it sits in the background. On, a join reaches you in seconds. Off, Chromium slows the whole window down after a few minutes in the background and a notification can be minutes late. This is the one setting that changes Discord as a whole rather than only this plugin, so turn it off if you would rather Discord stayed out of the way while you are in a game",
+    settingMovePace: "How fast group moves run. Every move is one line in the server's audit log, and a whole channel arriving in a second looks like a raid tool rather than a moderator. Careful sends one at a time, instant sends eight at once",
+    movePaceCareful: "Careful (one at a time)",
+    movePaceFast: "Fast (four at once)",
+    movePaceInstant: "Instant (eight at once)",
     settingModeratorMode: "Moderator actions. Pull somebody into your channel, bring a whole channel over, put a magnet on one person, and undo any of it. All of it is built on Move Members, so the entries only show up where you actually hold that permission",
     settingShowPanelButton: "Show the Voice Radar button in the account panel (next to mic/headphones)",
     settingGlobalHotkey: "Lets the hotkey work while Discord is in the background, in a game, in another window or closed to the tray. It brings Discord up and opens the radar, and pressing it again closes the radar and puts Discord back where it was. While this is on, the combination is taken from every other program, and Discord itself has to be running",
@@ -417,7 +421,7 @@ export const en = {
     pullConfirmTitle: "Move everyone over?",
     pullConfirmBody: (count: number, where: string, seconds: number) =>
         `${count} ${pluralEn(count, "person", "people")} from ${where} will be moved into your channel, `
-        + `one at a time over about ${seconds} ${pluralEn(seconds, "second", "seconds")}. `
+        + `in about ${seconds} ${pluralEn(seconds, "second", "seconds")}. `
         + "Every move is a line in the server's audit log.",
     pullConfirmButton: (count: number) => `Move ${count}`,
     noMovePermissionHere: (where: string) =>

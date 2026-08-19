@@ -27,11 +27,22 @@ import { makeRange, OptionType } from "@utils/types";
  */
 import { parseHotkey } from "./hotkey";
 import { AUTO_LANGUAGE, LANGUAGE_CODES, LANGUAGE_LABELS, T } from "./i18n";
+import type { BatchPace } from "./moveBatch";
 
 export const DEFAULT_HISTORY_LIMIT = 15;
 export const MIN_HISTORY_LIMIT = 5;
 export const MAX_HISTORY_LIMIT = 100;
 export const DEFAULT_HOTKEY = "Alt+2";
+
+export type MovePace = "careful" | "fast" | "instant";
+
+export const MOVE_PACES: Record<MovePace, BatchPace> = {
+    careful: { parallel: 1, spacingMs: 600 },
+    fast: { parallel: 4, spacingMs: 150 },
+    instant: { parallel: 8, spacingMs: 0 }
+};
+
+export const DEFAULT_MOVE_PACE: MovePace = "fast";
 
 /**
  * How many servers may be asked to keep sending voice states.
@@ -180,6 +191,19 @@ export const settings = definePluginSettings({
         default: true,
         onChange: () => void import("./globalHotkey").then(module => module.syncBackgroundTimers())
     },
+    movePace: {
+        type: OptionType.SELECT,
+        get description() {
+            return T.settingMovePace;
+        },
+        get options() {
+            return [
+                { label: T.movePaceCareful, value: "careful" },
+                { label: T.movePaceFast, value: "fast", default: true },
+                { label: T.movePaceInstant, value: "instant" }
+            ];
+        }
+    },
     moderatorMode: {
         type: OptionType.BOOLEAN,
         get description() {
@@ -213,6 +237,10 @@ export function getWatchedServerLimit(): number {
     const raw = Number(settings.store.watchedServerLimit);
     if (!Number.isFinite(raw)) return DEFAULT_WATCHED_SERVERS;
     return Math.min(MAX_WATCHED_SERVERS, Math.max(MIN_WATCHED_SERVERS, Math.floor(raw)));
+}
+
+export function getMovePace(): BatchPace {
+    return MOVE_PACES[settings.store.movePace as MovePace] ?? MOVE_PACES[DEFAULT_MOVE_PACE];
 }
 
 export function getHistoryLimit(): number {

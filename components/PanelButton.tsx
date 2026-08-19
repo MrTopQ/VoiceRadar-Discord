@@ -118,6 +118,44 @@ function PanelButtonOrFallback(props: PanelButtonProps) {
     );
 }
 
+function PanelTooltip({ live }: { live: LiveUser[]; }) {
+    const hotkey = formatHotkey(parseHotkey(settings.store.hotkey || DEFAULT_HOTKEY));
+    const target = getAutoJoinTarget();
+
+    return (
+        <div className={cl("panel-tooltip")}>
+            <div className={cl("panel-tooltip-title")}>{T.panelTitle(hotkey)}</div>
+            {live.length ? (
+                <>
+                    {live.slice(0, TOOLTIP_MAX_USERS).map(user => (
+                        <div key={user.id} className={cl("panel-tooltip-row")}>
+                            <img
+                                className={cl("tip-avatar")}
+                                src={getAvatarUrl(user.id) ?? DEFAULT_AVATAR_URL}
+                                alt=""
+                            />
+                            {user.name} <span className={cl("dim")}>— {user.where}</span>
+                        </div>
+                    ))}
+                    {live.length > TOOLTIP_MAX_USERS && (
+                        <div className={cl("dim")}>{T.tooltipAndMore(live.length - TOOLTIP_MAX_USERS)}</div>
+                    )}
+                </>
+            ) : (
+                <div className={cl("dim")}>{T.panelNobodyInVoice}</div>
+            )}
+            {target && (
+                <div className={cl("panel-tooltip-row")}>
+                    {T.panelAutoJoin(
+                        getUserDisplayName(target.id, target.name),
+                        !!settings.store.silentJoin
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
+
 export function VoiceRadarPanelButton(props: { nameplate?: any; }) {
     const [live, setLive] = useState<LiveUser[]>([]);
 
@@ -137,47 +175,9 @@ export function VoiceRadarPanelButton(props: { nameplate?: any; }) {
         };
     }, []);
 
-    const renderTooltip = () => {
-        const hotkey = formatHotkey(parseHotkey(settings.store.hotkey || DEFAULT_HOTKEY));
-        const target = getAutoJoinTarget();
-
-        return (
-            <div className={cl("panel-tooltip")}>
-                <div className={cl("panel-tooltip-title")}>{T.panelTitle(hotkey)}</div>
-                {live.length ? (
-                    <>
-                        {live.slice(0, TOOLTIP_MAX_USERS).map(user => (
-                            <div key={user.id} className={cl("panel-tooltip-row")}>
-                                <img
-                                    className={cl("tip-avatar")}
-                                    src={getAvatarUrl(user.id) ?? DEFAULT_AVATAR_URL}
-                                    alt=""
-                                />
-                                {user.name} <span className={cl("dim")}>— {user.where}</span>
-                            </div>
-                        ))}
-                        {live.length > TOOLTIP_MAX_USERS && (
-                            <div className={cl("dim")}>{T.tooltipAndMore(live.length - TOOLTIP_MAX_USERS)}</div>
-                        )}
-                    </>
-                ) : (
-                    <div className={cl("dim")}>{T.panelNobodyInVoice}</div>
-                )}
-                {target && (
-                    <div className={cl("panel-tooltip-row")}>
-                        {T.panelAutoJoin(
-                            getUserDisplayName(target.id, target.name),
-                            !!settings.store.silentJoin
-                        )}
-                    </div>
-                )}
-            </div>
-        );
-    };
-
     return (
         <PanelButtonOrFallback
-            tooltipText={renderTooltip()}
+            tooltipText={<PanelTooltip live={live} />}
             icon={() => <RadarIconWithBadge count={live.length} />}
             onClick={openRadarModal}
             plated={props?.nameplate != null}

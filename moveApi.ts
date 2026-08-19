@@ -151,22 +151,6 @@ export async function moveMember(guildId: string, userId: string, toChannelId: s
     return patchMember(guildId, userId, body, name, context);
 }
 
-/**
- * Moving people one by one is a request each, so they are spaced out.
- *
- * The gap is not what keeps us inside Discord's limit. That one is dynamic, announced in the response
- * headers, and the client's own REST layer already queues by bucket, so it cannot be outrun anyway.
- * What the loop buys is control. A rate limit that survives its retry stops the rest of the batch,
- * leaving your channel stops it too, each refusal names the person it was about, and the undo records
- * are written one by one so they survive a half finished run.
- *
- * The gap itself is about what the run looks like from the other side. Every one of these is a
- * MEMBER_MOVE line in the server's audit log, and a whole channel arriving inside a couple of seconds
- * is the shape of a raid tool rather than of a moderator gathering people. It costs a few seconds and
- * takes that away.
- */
-export const MOVE_SPACING_MS = 600;
-
 /** Two group operations at once would interleave over the same people, each undoing the other. */
 let batchRunning = false;
 

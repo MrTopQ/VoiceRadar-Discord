@@ -53,7 +53,7 @@ import { RadarIcon } from "./icons";
 import { type DragHandlers, UserRow } from "./UserRow";
 
 const MODAL_KEY = "vc-voice-radar-topq";
-const LIVE_REFRESH_MS = 5000;
+const LIVE_REFRESH_MS = 15000;
 const REDRAW_THROTTLE_MS = 400;
 
 let isModalOpen = false;
@@ -288,8 +288,7 @@ function statusLine(people: number, live: number): string {
     return T.statusStoreLoaded(people, live);
 }
 
-function StatusChip({ people, live }: { people: number; live: number; }) {
-    const { state, label } = readState();
+function StatusTooltip({ people, live }: { people: number; live: number; }) {
     const subscriptions = getSubscriptionStatus();
 
     /*
@@ -304,7 +303,7 @@ function StatusChip({ people, live }: { people: number; live: number; }) {
         ? T.statusServers(subscriptions.guilds, formatRelativeTime(subscriptions.at))
         : passRunning ? T.statusServersFirstPass : T.statusServersWaiting;
 
-    const tooltip = (
+    return (
         <div className={cl("vc-tooltip")}>
             <div className={cl("vc-tooltip-title")}>{T.statusTitle}</div>
             <div>{statusLine(people, live)}</div>
@@ -312,9 +311,13 @@ function StatusChip({ people, live }: { people: number; live: number; }) {
             <div>{T.statusHotkey[getHotkeyReach()]}</div>
         </div>
     );
+}
+
+function StatusChip({ people, live }: { people: number; live: number; }) {
+    const { state, label } = readState();
 
     return (
-        <Tooltip text={tooltip}>
+        <Tooltip text={<StatusTooltip people={people} live={live} />}>
             {tooltipProps => (
                 <button
                     {...tooltipProps}

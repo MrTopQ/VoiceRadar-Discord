@@ -16,15 +16,16 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-import { sleep } from "@utils/misc";
 import { Alerts, ChannelStore, UserStore } from "@webpack/common";
 
 import { getMyChannelId, getVoiceInfo } from "./channels";
 import { T } from "./i18n";
-import { batchToken, beginBatch, endBatch, isBatchCurrent, isBatchRunning, isRepeatClick, MOVE_SPACING_MS, moveMember } from "./moveApi";
+import { batchToken, beginBatch, endBatch, isBatchCurrent, isBatchRunning, isRepeatClick, moveMember } from "./moveApi";
+import { type BatchTally, estimateBatchSeconds, runMoveBatch } from "./moveBatch";
 import { rememberMove } from "./moveHistory";
 import { canMoveUser } from "./movePermissions";
 import { getUserDisplayName } from "./names";
+import { getMovePace } from "./settings";
 import { toast, ToastType } from "./toast";
 
 /** What a button or a menu entry calls. The magnet goes straight to movePersonToMe instead. */
@@ -71,7 +72,7 @@ export async function movePersonToMe(userId: string): Promise<boolean> {
 }
 
 /** How many one click may move. Whoever is left over is named in the toast, and one more click takes them. */
-const MAX_PULL_AT_ONCE = 20;
+const MAX_PULL_AT_ONCE = 99;
 
 /**
  * Past this many people the click is confirmed first.
@@ -170,7 +171,7 @@ export async function pullUsersToMe(userIds: string[], what: string) {
         // this call is done. Nothing else waits on it
         Alerts.show({
             title: T.pullConfirmTitle,
-            body: T.pullConfirmBody(targets.length, what, Math.ceil(targets.length * MOVE_SPACING_MS / 1000)),
+            body: T.pullConfirmBody(targets.length, what, estimateBatchSeconds(targets.length, getMovePace())),
             confirmText: T.pullConfirmButton(targets.length),
             cancelText: T.cancel,
             onConfirm: () => void runPull(targets, myChannelId, what, skipped, token)
@@ -186,64 +187,44 @@ export async function pullUsersToMe(userIds: string[], what: string) {
  * them next to whatever the run itself did not get to.
  */
 async function runPull(targets: string[], myChannelId: string, what: string, skipped: number, token: number) {
-    // switched off while the confirmation was on screen, so the click confirms nothing
     if (!isBatchCurrent(token)) return;
     if (!beginBatch()) return;
 
     const guildId = (ChannelStore.getChannel(myChannelId) as any)?.guild_id;
-    let moved = 0;
-    /** how many of the batch never got a request at all, because a rate limit ended the run */
-    let abandoned = 0;
+    let tally: BatchTally = { done: 0, abandoned: 0 };
 
     try {
-        for (const [index, userId] of targets.entries()) {
-            // the plugin was switched off mid-run, and every step of this is a visible move in
-            // somebody's server
-            if (!isBatchCurrent(token)) break;
+        tally = await runMoveBatch(
+            targets,
+            getMovePace(),
+            async userId => {
+                const from = getVoiceInfo(userId)?.channelId;
+                const outcome = await moveMember(guildId, userId, myChannelId, getUserDisplayName(userId), from);
 
-            // check again, the channel may have emptied while we were working through the list
-            if (getMyChannelId() !== myChannelId) break;
-
-            const from = getVoiceInfo(userId)?.channelId;
-            const outcome = await moveMember(guildId, userId, myChannelId, getUserDisplayName(userId), from);
-
-            if (outcome.ok) {
-                // they moved either way, so the count must say so. Only the undo needs to know
-                // where from, so a channel we failed to read costs the undo and nothing else
-                if (from) rememberMove(userId, from, myChannelId);
-                moved++;
-            } else {
-                toast(outcome.problem!, ToastType.FAILURE);
-
-                // still rate limited after waiting it out, so something is wrong. Stop pushing
-                if (outcome.retryAfterMs) {
-                    abandoned = targets.length - index - 1;
-                    break;
+                if (outcome.ok) {
+                    if (from) rememberMove(userId, from, myChannelId);
+                    return { ok: true, rateLimited: false };
                 }
-            }
 
-            await sleep(MOVE_SPACING_MS);
-        }
+                toast(outcome.problem!, ToastType.FAILURE);
+                return { ok: false, rateLimited: outcome.retryAfterMs > 0 };
+            },
+            () => isBatchCurrent(token) && getMyChannelId() === myChannelId
+        );
     } finally {
         endBatch(token);
     }
 
-    // a run called off half way owes nobody a summary, since there is no window left to read it in
     if (!isBatchCurrent(token)) return;
+    if (!tally.done && !tally.abandoned) return;
 
-    // a run that moved nobody and gave up on somebody still owes an answer. See sendBatchBack
-    if (!moved && !abandoned) return;
-
-    // the cap used to be silent, so a channel of forty people looked like the action had decided
-    // fifteen of them did not count. A run cut short by a rate limit needs the same, and needs it
-    // more, because its red toast is replaced by this one a moment later
-    const left = skipped + abandoned;
+    const left = skipped + tally.abandoned;
 
     toast(
-        abandoned ? T.pulledUsersStopped(moved, what, left)
-            : left ? T.pulledUsersCapped(moved, what, left)
-                : T.pulledUsers(moved, what),
-        abandoned ? ToastType.MESSAGE : ToastType.SUCCESS
+        tally.abandoned ? T.pulledUsersStopped(tally.done, what, left)
+            : left ? T.pulledUsersCapped(tally.done, what, left)
+                : T.pulledUsers(tally.done, what),
+        tally.abandoned ? ToastType.MESSAGE : ToastType.SUCCESS
     );
 }
 
