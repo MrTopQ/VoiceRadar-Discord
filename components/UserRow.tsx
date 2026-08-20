@@ -71,7 +71,6 @@ function channelMention(channelId: string): ReactNode {
     }
 }
 
-/** Discord's own channel chip ("Guild › Channel"), with a plain-text fallback. */
 function ChannelMention({ voice }: { voice: VoiceInfo; }) {
     const parsed = channelMention(voice.channelId);
     if (parsed) return <>{parsed}</>;

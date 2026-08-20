@@ -41,7 +41,7 @@ import { nameProblems, resetUserLookups } from "./names";
 import { presenceProblems, resetPresenceRequests } from "./presence";
 import { resetQueue } from "./queue";
 import { settings } from "./settings";
-import { forgetSoundState, soundProblems } from "./sound";
+import { forgetSoundState } from "./sound";
 import { loadStore, shutdownStore } from "./store";
 import { resetStreamCache, streamProblems } from "./streams";
 import { setJoinedListOpener, startTracking, stopTracking, trackerProblems } from "./tracker";
@@ -148,7 +148,6 @@ function checkDiscordApis(): ApiHealth {
         .merge(movePermissionProblems())
         .merge(subscriptionProblems())
         .merge(trackerProblems())
-        .merge(soundProblems())
         // a missing window is fatal, a missing panel button is not, since the window opens from the
         // hotkey and the menus anyway
         .merge(windowProblems())

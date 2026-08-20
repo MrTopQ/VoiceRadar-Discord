@@ -272,7 +272,6 @@ export function getJoinSound(): string {
     return JOIN_SOUNDS.includes(raw) ? raw : DEFAULT_JOIN_SOUND;
 }
 
-/** 0 to 1, the shape both the Discord player and the chime want. */
 export function getJoinSoundVolume(): number {
     const raw = Number(settings.store.joinSoundVolume);
     if (!Number.isFinite(raw)) return DEFAULT_JOIN_SOUND_VOLUME / 100;

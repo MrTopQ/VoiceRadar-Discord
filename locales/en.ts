@@ -134,6 +134,9 @@ export const en = {
     healthWindowOk: "It opens from the hotkey, from every right click menu and from the account panel.",
     healthPanelButtonTitle: "The account panel button",
     healthPanelButtonOk: "The button with the counter sits next to the mic and the headphones.",
+    healthJoinSoundTitle: "Sound when somebody joins",
+    healthJoinSoundOk: "Played through Discord's own sounds, so it follows the output device and volume you set there. If they ever move, the plugin's own chime takes over.",
+    healthJoinSoundChime: "The plugin's own chime, which stands on nothing of Discord's and cannot be moved by an update.",
     healthToastsTitle: "The plugin's own messages",
     healthToastsOk: "The little messages saying what the plugin has just done.",
 
@@ -476,7 +479,7 @@ export const en = {
     apiServerList: "the list of your servers (GuildStore.getGuildIds), so only the servers your people were last seen in are watched and a join anywhere else goes unnoticed",
     apiOpenChannel: "opening channels (ChannelRouter.transitionToChannel)",
     apiStreamPreviews: "stream previews (ApplicationStreamPreviewStore)",
-    apiJoinSound: "Discord's own sounds (SoundUtils.playSound), so the join sound falls back to the plugin's chime",
+    apiJoinSound: "Discord's own sounds (SoundUtils.playSound)",
     apiPermissions: "permission checks (PermissionStore.can)",
     apiModeratorActions: "moderator actions (RestAPI.patch)",
     apiMoveMembersFlag: "the Move Members permission flag",

@@ -18,7 +18,7 @@
 
 import { getApiHealth } from "./apiHealth";
 import { T } from "./i18n";
-import { settings } from "./settings";
+import { CHIME_SOUND, getJoinSound, settings } from "./settings";
 
 export type FeatureLevel = "good" | "waiting" | "bad";
 
@@ -134,6 +134,12 @@ function features(): Feature[] {
             works: T.healthPanelButtonOk,
             parts: [T.apiPanelButton, T.apiPanelButtonPatch],
             off: () => !settings.store.showPanelButton
+        },
+        {
+            title: T.healthJoinSoundTitle,
+            works: getJoinSound() === CHIME_SOUND ? T.healthJoinSoundChime : T.healthJoinSoundOk,
+            parts: getJoinSound() === CHIME_SOUND ? [] : [T.apiJoinSound],
+            off: () => getJoinSound() === "off"
         },
         {
             // no probe can answer for these, so the only report is a failure that already happened.

@@ -131,6 +131,9 @@ export const ru: Messages = {
     healthWindowOk: "Открывается горячей клавишей, из любого правого клика и с панели аккаунта.",
     healthPanelButtonTitle: "Кнопка на панели аккаунта",
     healthPanelButtonOk: "Кнопка со счётчиком стоит рядом с микрофоном и наушниками.",
+    healthJoinSoundTitle: "Звук, когда кто-то заходит",
+    healthJoinSoundOk: "Играет через собственные звуки Discord, поэтому следует за выбранным там устройством и громкостью. Если они переедут, вместо них зазвучит сигнал самого плагина.",
+    healthJoinSoundChime: "Собственный сигнал плагина, он ни на чём из Discord не держится, и обновление его не сдвинет.",
     healthToastsTitle: "Сообщения самого плагина",
     healthToastsOk: "Всплывающие сообщения о том, что плагин только что сделал.",
 
@@ -457,7 +460,7 @@ export const ru: Messages = {
     apiServerList: "список ваших серверов (GuildStore.getGuildIds), поэтому следим только за теми, где ваших людей видели в последний раз, а заход в голосовой где-то ещё останется незамеченным",
     apiOpenChannel: "открытие каналов (ChannelRouter.transitionToChannel)",
     apiStreamPreviews: "превью стримов (ApplicationStreamPreviewStore)",
-    apiJoinSound: "собственные звуки Discord (SoundUtils.playSound), поэтому звук захода заменяется сигналом плагина",
+    apiJoinSound: "собственные звуки Discord (SoundUtils.playSound)",
     apiPermissions: "проверка прав (PermissionStore.can)",
     apiModeratorActions: "действия модератора (RestAPI.patch)",
     apiMoveMembersFlag: "флаг права Move Members",
