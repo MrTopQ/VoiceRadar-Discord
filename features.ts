@@ -138,7 +138,7 @@ function features(): Feature[] {
         {
             title: T.healthJoinSoundTitle,
             works: getJoinSound() === CHIME_SOUND ? T.healthJoinSoundChime : T.healthJoinSoundOk,
-            parts: getJoinSound() === CHIME_SOUND ? [] : [T.apiJoinSound],
+            parts: [],
             off: () => getJoinSound() === "off"
         },
         {

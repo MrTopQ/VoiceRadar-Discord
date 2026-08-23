@@ -479,7 +479,6 @@ export const en = {
     apiServerList: "the list of your servers (GuildStore.getGuildIds), so only the servers your people were last seen in are watched and a join anywhere else goes unnoticed",
     apiOpenChannel: "opening channels (ChannelRouter.transitionToChannel)",
     apiStreamPreviews: "stream previews (ApplicationStreamPreviewStore)",
-    apiJoinSound: "Discord's own sounds (SoundUtils.playSound)",
     apiPermissions: "permission checks (PermissionStore.can)",
     apiModeratorActions: "moderator actions (RestAPI.patch)",
     apiMoveMembersFlag: "the Move Members permission flag",

@@ -45,8 +45,8 @@ export const MOVE_PACES: Record<MovePace, BatchPace> = {
 export const DEFAULT_MOVE_PACE: MovePace = "fast";
 
 export const CHIME_SOUND = "chime";
-export const DEFAULT_JOIN_SOUND = "user_join";
-export const JOIN_SOUNDS = ["off", DEFAULT_JOIN_SOUND, "message1", CHIME_SOUND];
+export const DEFAULT_JOIN_SOUND = CHIME_SOUND;
+export const JOIN_SOUNDS = ["off", CHIME_SOUND, "user_join", "message1"];
 export const DEFAULT_JOIN_SOUND_VOLUME = 60;
 
 /**
@@ -158,9 +158,9 @@ export const settings = definePluginSettings({
         },
         get options() {
             return [
-                { label: T.joinSoundJoin, value: DEFAULT_JOIN_SOUND, default: true },
+                { label: T.joinSoundChime, value: CHIME_SOUND, default: true },
+                { label: T.joinSoundJoin, value: "user_join" },
                 { label: T.joinSoundPing, value: "message1" },
-                { label: T.joinSoundChime, value: CHIME_SOUND },
                 { label: T.joinSoundOff, value: "off" }
             ];
         }

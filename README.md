@@ -61,7 +61,7 @@ Eighteen, in panel order. Vencord prints a longer description beside each.
 | Only follow when idle | switch | off | Never pulls you out of a call |
 | Auto-join cooldown | seconds | 5 | Gap between two auto-joins, clamped to 2s and 5min |
 | Notification style | dropdown | Notification | Corner notification, Toast, or Both |
-| Join sound | dropdown | Discord join blip | Also the Discord ping, the plugin's own chime, or off. Heard over a fullscreen game |
+| Join sound | dropdown | Plugin chime | Also Discord's own join blip or ping, or off. Heard over a fullscreen game |
 | Join sound volume | slider, 0 to 100 | 60 | How loud that sound is |
 | Queue for full channels | switch | on | Auto-join only. Queueing by hand works either way |
 | Track automatically | switch | on | Remembers everyone you share a voice channel with |

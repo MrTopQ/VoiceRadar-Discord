@@ -460,7 +460,6 @@ export const ru: Messages = {
     apiServerList: "список ваших серверов (GuildStore.getGuildIds), поэтому следим только за теми, где ваших людей видели в последний раз, а заход в голосовой где-то ещё останется незамеченным",
     apiOpenChannel: "открытие каналов (ChannelRouter.transitionToChannel)",
     apiStreamPreviews: "превью стримов (ApplicationStreamPreviewStore)",
-    apiJoinSound: "собственные звуки Discord (SoundUtils.playSound)",
     apiPermissions: "проверка прав (PermissionStore.can)",
     apiModeratorActions: "действия модератора (RestAPI.patch)",
     apiMoveMembersFlag: "флаг права Move Members",

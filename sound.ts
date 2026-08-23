@@ -18,8 +18,7 @@
 
 import { findByPropsLazy } from "@webpack";
 
-import { clearReported, isFn, probe, reportBroken } from "./apiHealth";
-import { T } from "./i18n";
+import { isFn, probe } from "./apiHealth";
 import { CHIME_SOUND, getJoinSound, getJoinSoundVolume } from "./settings";
 
 const soundPlayer = findByPropsLazy("playSound");
@@ -122,13 +121,7 @@ export function playJoinSound(): void {
         return;
     }
 
-    if (playDiscordSound(choice, volume)) {
-        clearReported(T.apiJoinSound);
-        return;
-    }
-
-    reportBroken(T.apiJoinSound);
-    playChime(volume);
+    if (!playDiscordSound(choice, volume)) playChime(volume);
 }
 
 export function forgetSoundState(): void {
@@ -141,9 +134,4 @@ export function forgetSoundState(): void {
     }
 
     chimeContext = null;
-}
-
-export function usesDiscordSounds(): boolean {
-    const choice = getJoinSound();
-    return choice !== "off" && choice !== CHIME_SOUND;
 }
