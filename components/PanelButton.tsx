@@ -17,7 +17,7 @@
 */
 
 import { findComponentByCodeLazy } from "@webpack";
-import { FluxDispatcher, Tooltip, useEffect, useState } from "@webpack/common";
+import { FluxDispatcher, Tooltip, useCallback, useEffect, useState } from "@webpack/common";
 import type { ReactNode } from "react";
 
 import { type ApiHealth, HealthReport, isResolvedComponent } from "../apiHealth";
@@ -59,6 +59,16 @@ function collectLiveUsers(): LiveUser[] {
     }
 
     return live;
+}
+
+function sameLiveUsers(a: LiveUser[], b: LiveUser[]): boolean {
+    if (a.length !== b.length) return false;
+
+    for (let i = 0; i < a.length; i++) {
+        if (a[i].id !== b[i].id || a[i].name !== b[i].name || a[i].where !== b[i].where) return false;
+    }
+
+    return true;
 }
 
 function RadarIconWithBadge({ count }: { count: number; }) {
@@ -162,7 +172,10 @@ export function VoiceRadarPanelButton(props: { nameplate?: any; }) {
     useEffect(() => {
         // event driven instead of polling, because this button lives for the whole session. Voice
         // events from every server arrive in bursts, so recomputing is throttled
-        const update = throttle(() => setLive(collectLiveUsers()), UPDATE_THROTTLE_MS);
+        const update = throttle(() => setLive(previous => {
+            const next = collectLiveUsers();
+            return sameLiveUsers(previous, next) ? previous : next;
+        }), UPDATE_THROTTLE_MS);
 
         update();
         const unsubscribe = subscribeToStore(update);
@@ -175,10 +188,13 @@ export function VoiceRadarPanelButton(props: { nameplate?: any; }) {
         };
     }, []);
 
+    const count = live.length;
+    const icon = useCallback(() => <RadarIconWithBadge count={count} />, [count]);
+
     return (
         <PanelButtonOrFallback
             tooltipText={<PanelTooltip live={live} />}
-            icon={() => <RadarIconWithBadge count={live.length} />}
+            icon={icon}
             onClick={openRadarModal}
             plated={props?.nameplate != null}
         />
