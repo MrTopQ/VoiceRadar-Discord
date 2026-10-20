@@ -1,0 +1,402 @@
+
+.vr-panel-icon {
+    position: relative;
+    display: grid;
+    place-items: center;
+}
+
+/* Used only when a Discord update has moved the panel's own button component. */
+.vr-panel-fallback {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--interactive-normal);
+    cursor: pointer;
+}
+
+.vr-panel-fallback:hover {
+    background: var(--background-modifier-selected, rgb(255 255 255 / 6%));
+    color: var(--interactive-hover);
+}
+
+.vr-panel-fallback:focus-visible {
+    outline: 2px solid var(--brand-experiment, #5865f2);
+    outline-offset: -2px;
+}
+
+.vr-panel-badge {
+    position: absolute;
+    right: -5px;
+    bottom: -4px;
+    min-width: 13px;
+    height: 13px;
+    padding: 0 3px;
+    border-radius: 7px;
+    background: var(--status-positive, #23a55a);
+    color: #fff;
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 13px;
+    text-align: center;
+}
+
+.vr-panel-tooltip {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    max-width: 260px;
+    font-size: 12px;
+}
+
+.vr-panel-tooltip-title {
+    font-weight: 700;
+    margin-bottom: 2px;
+}
+
+.vr-panel-tooltip-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.vr-health {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 4px 0 8px;
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+.vr-health-group {
+    margin: 4px 0 -4px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--vr-text-muted);
+}
+
+.vr-health-group:not(:first-child) {
+    margin-top: 10px;
+}
+
+.vr-health-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 13.5px;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.vr-health-row .vr-status-dot-small {
+    margin-top: 5px;
+}
+
+.vr-health-detail {
+    color: var(--vr-text-muted);
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.vr-health-row > div {
+    min-width: 0;
+}
+
+.vr-health-name {
+    font-weight: 600;
+    color: var(--vr-text-strong);
+    margin-bottom: 2px;
+}
+
+.vr-info-header-avatar {
+    position: relative;
+    flex: 0 0 auto;
+    width: 44px;
+    height: 44px;
+}
+
+.vr-info-header-avatar img {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+}
+
+.vr-info-header-avatar .vr-status-dot {
+    position: absolute;
+    right: -1px;
+    bottom: -1px;
+}
+
+.vr-info-live {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px 16px;
+    margin-bottom: 14px;
+    border-radius: 12px;
+    border-left: 3px solid var(--status-positive, #23a55a);
+    background: color-mix(in srgb, var(--vr-green) 9%, var(--vr-raised));
+}
+
+.vr-info-live-off {
+    border-left-color: var(--vr-border-strong);
+    background: var(--vr-raised);
+}
+
+.vr-info-live-label,
+.vr-info-section-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--vr-text-muted);
+}
+
+.vr-info-section-title {
+    margin-bottom: 8px;
+}
+
+.vr-info-live-channel {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    width: fit-content;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--vr-text-strong);
+    cursor: pointer;
+}
+
+.vr-info-live-channel:hover {
+    text-decoration: underline;
+}
+
+.vr-info-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 18px;
+}
+
+.vr-info-tile {
+    border: 1px solid var(--vr-border);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: var(--vr-raised);
+}
+
+.vr-info-tile-wide {
+    grid-column: 1 / -1;
+}
+
+.vr-info-tile-click {
+    cursor: copy;
+}
+
+.vr-info-tile-click:hover {
+    background: var(--vr-card);
+}
+
+.vr-info-tile-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--vr-text-muted);
+}
+
+.vr-info-tile-value {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--vr-text);
+    overflow-wrap: anywhere;
+}
+
+.vr-info-tile-sub {
+    font-size: 12px;
+    color: var(--vr-text-muted);
+    overflow-wrap: anywhere;
+}
+
+.vr-info-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.vr-info-status .vr-status-dot {
+    position: static;
+}
+
+.vr-info-id {
+    font-family: var(--font-code, monospace);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: copy;
+}
+
+.vr-info-id:hover {
+    color: var(--vr-text);
+}
+
+.vr-guild-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.vr-guild-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    max-width: 100%;
+    padding: 3px 10px 3px 3px;
+    border-radius: 999px;
+    background: var(--vr-mod);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--vr-text);
+}
+
+.vr-guild-chip-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.vr-guild-chip-more {
+    padding: 3px 10px;
+    color: var(--vr-text-muted);
+}
+
+.vr-guild-icon {
+    flex: 0 0 auto;
+    width: 22px;
+    height: 22px;
+    border-radius: 7px;
+    object-fit: cover;
+}
+
+.vr-guild-icon-initials {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--vr-brand);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.vr-info-log {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 40vh;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.vr-info-day-heading {
+    margin: 0 0 2px 8px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--vr-text-muted);
+}
+
+.vr-info-line {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 5px 8px;
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+.vr-info-line:hover {
+    background: var(--vr-mod);
+}
+
+.vr-info-dot {
+    flex: 0 0 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.vr-info-dot-joined,
+.vr-info-kind-joined {
+    color: var(--status-positive, #23a55a);
+}
+
+.vr-info-dot-joined {
+    background: var(--status-positive, #23a55a);
+}
+
+.vr-info-dot-moved,
+.vr-info-kind-moved {
+    color: var(--text-link, #00a8fc);
+}
+
+.vr-info-dot-moved {
+    background: var(--text-link, #00a8fc);
+}
+
+.vr-info-dot-left {
+    background: var(--vr-text-muted);
+}
+
+.vr-info-kind-left {
+    color: var(--vr-text-muted);
+}
+
+.vr-info-when {
+    flex: 0 0 42px;
+    font-variant-numeric: tabular-nums;
+    color: var(--vr-text-muted);
+}
+
+.vr-info-kind {
+    flex: 0 0 72px;
+    font-weight: 600;
+}
+
+.vr-info-where {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.vr-info-where:hover {
+    text-decoration: underline;
+}
+
+.vr-info-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 20px 12px;
+    border-radius: 10px;
+    border: 1px dashed var(--vr-border-strong);
+    text-align: center;
+}
+
+.vr-info-empty-title {
+    font-weight: 700;
+    color: var(--vr-text);
+}

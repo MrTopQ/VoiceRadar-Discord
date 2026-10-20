@@ -1,0 +1,525 @@
+
+/* ── the list ───────────────────────────────────────────────────────────────────────────────── */
+
+.vr-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 0 10px 16px 20px;
+    scrollbar-gutter: stable;
+}
+
+.vr-list::-webkit-scrollbar,
+.vr-window-body::-webkit-scrollbar {
+    width: 10px;
+}
+
+.vr-list::-webkit-scrollbar-track,
+.vr-window-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.vr-list::-webkit-scrollbar-thumb,
+.vr-window-body::-webkit-scrollbar-thumb {
+    border: 3px solid transparent;
+    border-radius: 6px;
+    background: var(--scrollbar-auto-thumb, rgb(255 255 255 / 18%)) padding-box;
+}
+
+.vr-section {
+    margin-bottom: 14px;
+}
+
+/* Rows off screen are not rendered until they scroll near. */
+.vr-row {
+    --vr-row-bg: var(--vr-raised);
+
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 10px 10px 14px;
+    border: 1px solid var(--vr-border);
+    border-radius: 12px;
+    background-color: var(--vr-row-bg);
+    transition: background-color 0.12s ease, border-color 0.12s ease;
+    content-visibility: auto;
+    contain-intrinsic-size: auto 80px;
+}
+
+.vr-row + .vr-row {
+    margin-top: 6px;
+}
+
+.vr-row:hover {
+    --vr-row-bg: var(--vr-card);
+
+    border-color: var(--vr-border-strong);
+}
+
+.vr-row::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 14px;
+    bottom: 14px;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: transparent;
+}
+
+.vr-row-live {
+    background-image: linear-gradient(90deg, color-mix(in srgb, var(--vr-green) 8%, transparent), transparent 45%);
+}
+
+.vr-row-live::before {
+    background: var(--vr-green);
+}
+
+.vr-row-here {
+    background-image: linear-gradient(90deg, color-mix(in srgb, var(--vr-brand) 11%, transparent), transparent 45%);
+}
+
+.vr-row-here::before {
+    background: var(--vr-brand);
+}
+
+.vr-row-draggable {
+    cursor: grab;
+}
+
+.vr-row-dragging {
+    opacity: 0.45;
+    cursor: grabbing;
+}
+
+/* Drawn inside the row, because content-visibility clips anything outside it. */
+.vr-row-drop-before {
+    box-shadow: inset 0 3px 0 0 var(--vr-brand);
+}
+
+.vr-row-drop-after {
+    box-shadow: inset 0 -3px 0 0 var(--vr-brand);
+}
+
+.vr-avatar-wrap {
+    position: relative;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    line-height: 0;
+    cursor: pointer;
+}
+
+.vr-avatar-wrap:focus-visible {
+    outline: 2px solid var(--vr-brand);
+    outline-offset: 2px;
+}
+
+.vr-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.vr-status-dot {
+    position: absolute;
+    right: -2px;
+    bottom: -2px;
+    width: 17px;
+    height: 17px;
+    border-radius: 50%;
+
+    border: 3px solid var(--vr-row-bg, var(--background-base-low, #232428));
+    box-sizing: border-box;
+}
+
+.vr-status-unknown {
+    background: transparent;
+    box-shadow: inset 0 0 0 2px var(--status-offline, #80848e);
+}
+
+.vr-info {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.vr-name-line {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    min-width: 0;
+}
+
+.vr-name {
+    font-size: 15.5px;
+    font-weight: 700;
+    color: var(--vr-text-strong);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+}
+
+.vr-name:hover {
+    text-decoration: underline;
+}
+
+.vr-badge {
+    flex: 0 0 auto;
+    padding: 2px 6px;
+    border-radius: 5px;
+    background: var(--vr-mod-strong);
+    color: var(--vr-text-muted);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+}
+
+.vr-badge-auto {
+    background: var(--vr-brand-soft);
+    color: var(--vr-brand-text);
+}
+
+.vr-badge-muted {
+    background: color-mix(in srgb, var(--vr-red) 20%, transparent);
+    color: var(--vr-red-text);
+}
+
+.vr-badge-here {
+    background: var(--vr-brand);
+    color: #fff;
+}
+
+.vr-platforms {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    flex: 0 0 auto;
+}
+
+.vr-platform {
+    display: inline-flex;
+    align-items: center;
+
+    /* The inline svg baseline would push the name line around. */
+    line-height: 0;
+}
+
+.vr-meta-line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    font-size: 13px;
+    color: var(--vr-text);
+}
+
+.vr-meta-line + .vr-meta-line {
+    font-size: 12.5px;
+}
+
+.vr-channel {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    max-width: 100%;
+    padding: 2px 8px 2px 6px;
+    border-radius: 7px;
+    background: color-mix(in srgb, var(--vr-green) 13%, transparent);
+    color: var(--vr-green-text);
+    cursor: pointer;
+    transition: background-color 0.12s ease;
+}
+
+.vr-channel:hover {
+    background: color-mix(in srgb, var(--vr-green) 22%, transparent);
+}
+
+.vr-channel-locked {
+    background: var(--vr-mod);
+    color: var(--vr-text-muted);
+}
+
+.vr-channel-locked:hover {
+    background: var(--vr-mod-strong);
+}
+
+.vr-channel-name {
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Discord's mention is a chip of its own, flattened inside this pill. */
+.vr-channel [class*="mention"],
+.vr-channel [class*="Mention"] {
+    padding: 0;
+    background: none;
+    color: inherit;
+    font-weight: 600;
+    max-width: 340px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.vr-state-icon {
+    flex: 0 0 auto;
+    color: var(--vr-text-muted);
+}
+
+.vr-dim {
+    color: var(--vr-text-muted);
+    font-weight: 400;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.vr-empty-tab {
+    padding: 40px 0;
+    text-align: center;
+    color: var(--vr-text-muted);
+    font-size: 14px;
+}
+
+.vr-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 64px 24px;
+    text-align: center;
+    color: var(--vr-text-muted);
+}
+
+.vr-empty-icon {
+    display: grid;
+    place-items: center;
+    width: 72px;
+    height: 72px;
+    margin-bottom: 6px;
+    border-radius: 22px;
+    background: var(--vr-brand-soft);
+    color: var(--vr-brand-text);
+}
+
+.vr-empty-title {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--vr-text-strong);
+}
+
+.vr-empty-hint {
+    max-width: 440px;
+    font-size: 14px;
+    line-height: 1.45;
+}
+
+/* ── a row's buttons ────────────────────────────────────────────────────────────────────────── */
+
+.vr-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+}
+
+.vr-action-group {
+    display: flex;
+    gap: 2px;
+    padding: 3px;
+    border-radius: 11px;
+    background: var(--vr-mod);
+}
+
+.vr-action {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--vr-text);
+    cursor: pointer;
+    transition: background-color 0.12s ease, color 0.12s ease, transform 0.08s ease;
+}
+
+.vr-action:hover {
+    background: var(--vr-mod-strong);
+    color: var(--vr-text-strong);
+}
+
+.vr-action:active {
+    transform: scale(0.9);
+}
+
+.vr-action:focus-visible {
+    outline: 2px solid var(--vr-brand);
+    outline-offset: 1px;
+}
+
+.vr-action.vr-action-active,
+.vr-action.vr-action-active:hover {
+    background: var(--vr-brand);
+    color: #fff;
+}
+
+.vr-action.vr-action-warn,
+.vr-action.vr-action-warn:hover {
+    background: var(--vr-amber);
+    color: #1e1f22;
+}
+
+.vr-action.vr-action-danger:hover,
+.vr-action.vr-action-danger.vr-action-active {
+    background: var(--vr-red);
+    color: #fff;
+}
+
+.vr-action-disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.vr-action.vr-action-disabled:hover,
+.vr-action.vr-action-disabled:active {
+    background: transparent;
+    color: var(--vr-text);
+    transform: none;
+}
+
+.vr-info-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    flex: 0 0 auto;
+    margin-left: 6px;
+    padding: 1px 8px;
+    border: 1px solid color-mix(in srgb, var(--vr-brand) 40%, transparent);
+    border-radius: 999px;
+    background: transparent;
+    color: color-mix(in srgb, var(--vr-brand) 45%, var(--vr-text));
+    font-family: inherit;
+    font-size: 11.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.vr-info-button:hover {
+    background: var(--vr-brand-soft);
+    color: var(--vr-text-strong);
+}
+
+.vr-info-button:focus-visible {
+    outline: 2px solid var(--vr-brand);
+    outline-offset: 2px;
+}
+
+/* ── what a row carries ──────────────────────────────────────────────────────────────────────── */
+
+.vr-activity {
+    padding: 1px 8px;
+    border-radius: 6px;
+    background: color-mix(in srgb, var(--vr-activity-colour) 16%, transparent);
+    color: var(--vr-activity-colour);
+    font-size: 12.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 0 1 auto;
+}
+
+.vr-activity-playing {
+    --vr-activity-colour: var(--brand-experiment, #5865f2);
+}
+
+.vr-activity-listening {
+    --vr-activity-colour: #1db954;
+}
+
+.vr-activity-streaming {
+    --vr-activity-colour: #b083f0;
+}
+
+.vr-activity-watching {
+    --vr-activity-colour: #eb459e;
+}
+
+.vr-activity-competing {
+    --vr-activity-colour: var(--status-warning, #f0b232);
+}
+
+.vr-activity-custom {
+    --vr-activity-colour: var(--text-muted);
+}
+
+.vr-stream-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 1px 7px;
+    border-radius: 5px;
+    background: var(--status-danger, #f23f43);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    flex: 0 0 auto;
+}
+
+.vr-stream-badge:hover {
+    filter: brightness(1.12);
+}
+
+.vr-stream-tooltip {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-width: 320px;
+}
+
+.vr-stream-tooltip-title {
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.vr-stream-preview {
+    width: 300px;
+    max-width: 100%;
+    aspect-ratio: 16 / 9;
+    border-radius: 6px;
+    object-fit: cover;
+    display: block;
+    background: var(--background-tertiary);
+}
+
+.vr-stream-placeholder {
+    display: grid;
+    place-items: center;
+    width: 300px;
+    max-width: 100%;
+    aspect-ratio: 16 / 9;
+    border-radius: 6px;
+    background: var(--background-tertiary);
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.vr-stream-tooltip-hint {
+    color: var(--text-muted);
+    font-size: 11px;
+}

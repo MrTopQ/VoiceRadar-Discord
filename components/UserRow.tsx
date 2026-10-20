@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-import { Parser, React, Tooltip } from "@webpack/common";
+import { Parser, React } from "@webpack/common";
 import type { ReactNode } from "react";
 
 import { toggleAutoJoinFor, toggleMagnetFor } from "../actions";
@@ -25,21 +25,26 @@ import { getMyChannelId, getMyGuildId, getVoiceInfo, openChannel, type VoiceInfo
 import { T } from "../i18n";
 import { joinVoiceChannel } from "../join";
 import { getReturnChannel, sendUserBack } from "../moveHistory";
-import { canShowMagnet, getMoveAccess } from "../movePermissions";
+import { canShowMagnet, canShowStickyMute, getMoveAccess, muteAccessForChannel } from "../movePermissions";
 import { DEFAULT_AVATAR_URL, getAvatarUrl, getUserDisplayName, openProfile } from "../names";
 import { getPresenceInfo } from "../presence";
 import { pullToMyChannel } from "../pull";
 import { cancelQueue, isQueuedFor, queueForChannel } from "../queue";
 import { settings } from "../settings";
+import { getLastLeave } from "../sightings";
+import { isStickyMuteLimitReached, MAX_STICKY_MUTED, toggleStickyMuteFor } from "../stickyMute";
 import { removeUser, toggleNotify, togglePin, type TrackedUser } from "../store";
 import { formatRelativeTime } from "../time";
 import { toast, ToastType } from "../toast";
+import { openUserMenu } from "../userMenu";
 import { ActionButton, cl, PlatformIcons, StatusDot } from "./common";
+import { Hint } from "./Hint";
 import {
     BellIcon,
     CameraIcon,
     ClockIcon,
     DeafIcon,
+    InfoIcon,
     JoinIcon,
     LockedSpeakerIcon,
     LockIcon,
@@ -52,6 +57,7 @@ import {
     TargetIcon,
     TrashIcon
 } from "./icons";
+import { openPersonInfo } from "./PersonInfoModal";
 import { StreamIndicator } from "./StreamPreview";
 
 const TOOLTIP_MAX_MEMBERS = 10;
@@ -119,7 +125,6 @@ function ChannelTooltip({ voice }: { voice: VoiceInfo; }) {
 function ChannelChip({ voice }: { voice: VoiceInfo; }) {
     const Icon = voice.canJoin && !voice.isFull ? SpeakerIcon : LockedSpeakerIcon;
 
-    // clicking the chip only navigates, joining is what the button on the right is for
     const onClick = (event: React.MouseEvent) => {
         event.preventDefault();
         event.stopPropagation();
@@ -133,10 +138,10 @@ function ChannelChip({ voice }: { voice: VoiceInfo; }) {
     };
 
     return (
-        <Tooltip text={<ChannelTooltip voice={voice} />}>
-            {tooltipProps => (
+        <Hint text={<ChannelTooltip voice={voice} />}>
+            {hintProps => (
                 <span
-                    {...tooltipProps}
+                    {...hintProps}
                     className={cl("channel") + (voice.canJoin && !voice.isFull ? "" : " " + cl("channel-locked"))}
                     role="button"
                     onClickCapture={onClick}
@@ -151,7 +156,20 @@ function ChannelChip({ voice }: { voice: VoiceInfo; }) {
                     {voice.isMyChannel && <span className={cl("badge") + " " + cl("badge-here")}>{T.badgeWithYou}</span>}
                 </span>
             )}
-        </Tooltip>
+        </Hint>
+    );
+}
+
+function NotInVoice({ user }: { user: TrackedUser; }) {
+    const leave = getLastLeave(user.id);
+    const channel = leave?.channelLabel ?? user.lastChannelName;
+
+    return (
+        <span className={cl("dim")} title={leave ? new Date(leave.at).toLocaleString() : undefined}>
+            {leave
+                ? T.leftAgo(formatRelativeTime(leave.at), channel)
+                : <>{T.notInVoice}{user.lastChannelName && T.lastChannel(user.lastChannelName)}</>}
+        </span>
     );
 }
 
@@ -162,11 +180,6 @@ export interface DragHandlers {
     onDragEnd(): void;
     draggingId: string | null;
     overId: string | null;
-    /**
-     * Which edge of the row under the cursor the drop line belongs on. Dragging downwards lands
-     * after that row, upwards before it, and a line drawn on the wrong side points at a gap the
-     * row will not go into.
-     */
     dropAfter: boolean;
 }
 
@@ -176,7 +189,6 @@ export function UserRow({ user, drag }: { user: TrackedUser; drag?: DragHandlers
     const voice = getVoiceInfo(user.id);
     const avatar = getAvatarUrl(user.id) ?? DEFAULT_AVATAR_URL;
 
-    // the line marking the gap this row would be pushed into, on the edge the drop actually uses
     const dropClass = drag && drag.overId === user.id && drag.draggingId !== user.id
         ? cl(drag.dropAfter ? "row-drop-after" : "row-drop-before")
         : null;
@@ -190,12 +202,11 @@ export function UserRow({ user, drag }: { user: TrackedUser; drag?: DragHandlers
         dropClass
     ].filter(Boolean).join(" ");
 
-    // pinned rows can be reordered by hand, everything else is ordered by time
     const dragProps = drag && {
         draggable: true,
         onDragStart: (event: React.DragEvent) => {
             event.dataTransfer.effectAllowed = "move";
-            // some drop targets refuse a drag with no payload
+            // Some drop targets refuse a drag with no payload.
             event.dataTransfer.setData("text/plain", user.id);
             drag.onDragStart(user.id);
         },
@@ -211,25 +222,24 @@ export function UserRow({ user, drag }: { user: TrackedUser; drag?: DragHandlers
         onDragEnd: () => drag.onDragEnd()
     };
 
-    // moderator actions only exist where the permission is, but a permission check that itself
-    // broke leaves the buttons in place and lets the server answer
     const moveAccess = getMoveAccess(user.id);
     const canMove = moveAccess !== "no";
     const uncheckedNote = moveAccess === "unknown" ? T.permissionUnchecked : "";
-    // pulled them over? then the same button offers to put them back, until they leave you
     const returnTo = canMove ? getReturnChannel(user.id) : null;
-    // an armed magnet outlives the target's voice session, so its button has to as well
     const showMagnet = canShowMagnet(user.id);
+    const showStickyMute = canShowStickyMute(user.id);
 
-    /*
-     * The magnet cannot reach across servers, needs you to be sitting somewhere, and has nobody to
-     * move while they are out of voice. Say which it is instead of quietly doing nothing.
-     *
-     * The permission comes first of all, because the button is deliberately kept on screen for an
-     * armed magnet whose target cannot be moved, so that there is somewhere left to switch it off.
-     * Everything below it describes a magnet that would fire once the way is clear, and with the
-     * permission missing none of them ever will, so the row promised a pull that could not happen.
-     */
+    const stickyMuteFull = !user.stickyMute && isStickyMuteLimitReached();
+    const stickyMuteTooltip = stickyMuteFull
+        ? T.stickyMuteLimitReached(MAX_STICKY_MUTED)
+        : !user.stickyMute
+            ? T.stickyMuteOff
+        : !voice
+            ? T.stickyMuteWaiting
+            : muteAccessForChannel(voice.channelId) === "no"
+                ? T.stickyMuteNoPermissionHere
+                : T.stickyMuteOn;
+
     const magnetTooltip = !user.autoPull
         ? T.magnetOff
         : moveAccess === "no"
@@ -242,20 +252,11 @@ export function UserRow({ user, drag }: { user: TrackedUser; drag?: DragHandlers
                         ? T.magnetIdleOtherGuild
                         : T.magnetActive;
 
-    /*
-     * A queue belongs to the channel, not to the person who made you want it, so it outlives them
-     * leaving. Reading it off their live channel alone meant the row went quiet the moment they
-     * walked out, while the toolbar chip still said you were waiting, for a channel nothing on
-     * screen connected to any more. Their last known channel is what keeps the two agreeing.
-     */
     const queuedChannelId = voice?.channelId ?? user.lastChannelId;
     const queued = queuedChannelId != null && isQueuedFor(queuedChannelId);
-    // a full channel is not a dead end any more, you can hold a spot instead
     const canQueue = voice != null && voice.isFull && voice.canJoin && !voice.isMyChannel;
     const joinBlocked = voice != null && !voice.canJoin;
 
-    // the queue reads first, because it is the one state that survives them leaving voice, and the
-    // button has to stay a way to call it off rather than turning into "they are not in voice"
     const joinTooltip = queued ? T.joinQueued
         : !voice ? T.joinNotInVoice
             : voice.isMyChannel ? T.joinAlreadyThere
@@ -283,19 +284,18 @@ export function UserRow({ user, drag }: { user: TrackedUser; drag?: DragHandlers
         joinVoiceChannel(voice.channelId);
     };
 
-    // user.name rather than the display name, because these persist it if the person is not
-    // tracked yet, and the displayed one can be a translated placeholder. See getStoredName
+    // user.name, not the display name, because a translated placeholder must not be saved.
     const handleMagnet = () => toggleMagnetFor(user.id, user.name);
+    const handleStickyMute = () => toggleStickyMuteFor(user.id, user.name);
     const handleAutoJoin = () => toggleAutoJoinFor(user.id, user.name);
 
     const openThisProfile = () => openProfile(user.id);
 
     return (
-        <div className={rowClass} {...dragProps}>
+        <div className={rowClass} {...dragProps} onContextMenu={event => openUserMenu(event, user.id)}>
             <div
                 className={cl("avatar-wrap")}
                 onClick={openThisProfile}
-                // role="button" promises it works from the keyboard, so it has to
                 onKeyDown={event => {
                     if (event.key !== "Enter" && event.key !== " ") return;
                     event.preventDefault();
@@ -312,18 +312,13 @@ export function UserRow({ user, drag }: { user: TrackedUser; drag?: DragHandlers
             <div className={cl("info")}>
                 <div className={cl("name-line")}>
                     <span className={cl("name")} onClick={openThisProfile}>{name}</span>
-                    {user.pinned && <span className={cl("badge")}>{T.badgePinned}</span>}
                     {user.autoJoin && <span className={cl("badge") + " " + cl("badge-auto")}>{T.badgeAuto}</span>}
+                    {user.stickyMute && <span className={cl("badge") + " " + cl("badge-muted")}>{T.badgeMuted}</span>}
                     <PlatformIcons platforms={presence.platforms} />
                 </div>
 
                 <div className={cl("meta-line")}>
-                    {voice ? <ChannelChip voice={voice} /> : (
-                        <span className={cl("dim")}>
-                            {T.notInVoice}
-                            {user.lastChannelName && T.lastChannel(user.lastChannelName)}
-                        </span>
-                    )}
+                    {voice ? <ChannelChip voice={voice} /> : <NotInVoice user={user} />}
                     <StreamIndicator userId={user.id} name={name} />
                 </div>
 
@@ -333,6 +328,17 @@ export function UserRow({ user, drag }: { user: TrackedUser; drag?: DragHandlers
                             ? T.seenAgo(formatRelativeTime(user.lastSeen))
                             : T.addedAgo(formatRelativeTime(user.lastSeen))}
                     </span>
+                    <button
+                        className={cl("info-button")}
+                        onClick={event => {
+                            event.stopPropagation();
+                            openPersonInfo(user.id);
+                        }}
+                        title={T.infoButtonHint}
+                    >
+                        <InfoIcon />
+                        {T.infoButton}
+                    </button>
                     {presence.activity && (
                         <span className={cl("activity") + " " + cl("activity-" + presence.activityKind)}>
                             {presence.activity}
@@ -342,64 +348,74 @@ export function UserRow({ user, drag }: { user: TrackedUser; drag?: DragHandlers
             </div>
 
             <div className={cl("actions")}>
-                <ActionButton
-                    icon={queued ? <ClockIcon /> : joinBlocked ? <LockIcon /> : canQueue ? <ClockIcon /> : <JoinIcon />}
-                    tooltip={joinTooltip}
-                    active={queued}
-                    onClick={handleJoin}
-                    // a queue stays cancellable from here even after they have walked off
-                    disabled={!queued && (!voice || voice.isMyChannel || joinBlocked)}
-                />
-                {canMove && (returnTo
-                    ? <ActionButton
-                        icon={<ReturnIcon />}
-                        tooltip={T.sendBackTo(returnTo.name) + uncheckedNote}
-                        warn
-                        onClick={() => void sendUserBack(user.id)}
-                    />
-                    : <ActionButton
-                        icon={<PullIcon />}
-                        tooltip={(voice?.isMyChannel ? T.pullAlreadyHere : T.pullToMyChannel) + uncheckedNote}
-                        onClick={() => void pullToMyChannel(user.id)}
-                        disabled={!voice || voice.isMyChannel}
-                    />
-                )}
-                {showMagnet && (
+                <div className={cl("action-group")}>
                     <ActionButton
-                        icon={<MagnetIcon />}
-                        tooltip={magnetTooltip + uncheckedNote}
-                        active={user.autoPull}
-                        onClick={handleMagnet}
+                        icon={queued ? <ClockIcon /> : joinBlocked ? <LockIcon /> : canQueue ? <ClockIcon /> : <JoinIcon />}
+                        tooltip={joinTooltip}
+                        active={queued}
+                        onClick={handleJoin}
+                        disabled={!queued && (!voice || voice.isMyChannel || joinBlocked)}
                     />
-                )}
-                <ActionButton
-                    icon={<PinIcon />}
-                    tooltip={user.pinned ? T.unpin : T.pin}
-                    active={user.pinned}
-                    onClick={() => togglePin(user.id)}
-                />
-                <ActionButton
-                    icon={<BellIcon />}
-                    tooltip={user.notify ? T.notifyOn : T.notifyOff}
-                    active={user.notify}
-                    onClick={() => toggleNotify(user.id)}
-                />
-                <ActionButton
-                    icon={<TargetIcon />}
-                    // an armed target with the master switch off follows nobody, and saying it is
-                    // on was the row promising something the settings had already ruled out
-                    tooltip={!user.autoJoin
-                        ? T.autoJoinOff
-                        : settings.store.autoJoinEnabled ? T.autoJoinOn : T.autoJoinOnButDisabled}
-                    active={user.autoJoin}
-                    onClick={handleAutoJoin}
-                />
-                <ActionButton
-                    icon={<TrashIcon />}
-                    tooltip={T.removeFromList}
-                    danger
-                    onClick={() => removeUser(user.id)}
-                />
+                    {canMove && (returnTo
+                        ? <ActionButton
+                            icon={<ReturnIcon />}
+                            tooltip={T.sendBackTo(returnTo.name) + uncheckedNote}
+                            warn
+                            onClick={() => void sendUserBack(user.id)}
+                        />
+                        : <ActionButton
+                            icon={<PullIcon />}
+                            tooltip={(voice?.isMyChannel ? T.pullAlreadyHere : T.pullToMyChannel) + uncheckedNote}
+                            onClick={() => void pullToMyChannel(user.id)}
+                            disabled={!voice || voice.isMyChannel}
+                        />
+                    )}
+                    {showMagnet && (
+                        <ActionButton
+                            icon={<MagnetIcon />}
+                            tooltip={magnetTooltip + uncheckedNote}
+                            active={user.autoPull}
+                            onClick={handleMagnet}
+                        />
+                    )}
+                    {showStickyMute && (
+                        <ActionButton
+                            icon={<MicOffIcon />}
+                            tooltip={stickyMuteTooltip + uncheckedNote}
+                            active={user.stickyMute}
+                            danger={user.stickyMute}
+                            disabled={stickyMuteFull}
+                            onClick={handleStickyMute}
+                        />
+                    )}
+                </div>
+
+                <div className={cl("action-group")}>
+                    <ActionButton
+                        icon={<PinIcon />}
+                        tooltip={user.pinned ? T.unpin : T.pin}
+                        active={user.pinned}
+                        onClick={() => togglePin(user.id)}
+                    />
+                    <ActionButton
+                        icon={<BellIcon />}
+                        tooltip={user.notify ? T.notifyOn : T.notifyOff}
+                        active={user.notify}
+                        onClick={() => toggleNotify(user.id)}
+                    />
+                    <ActionButton
+                        icon={<TargetIcon />}
+                        tooltip={user.autoJoin ? T.autoJoinOn : T.autoJoinOff}
+                        active={user.autoJoin}
+                        onClick={handleAutoJoin}
+                    />
+                    <ActionButton
+                        icon={<TrashIcon />}
+                        tooltip={T.removeFromList}
+                        danger
+                        onClick={() => removeUser(user.id)}
+                    />
+                </div>
             </div>
         </div>
     );

@@ -17,11 +17,11 @@
 */
 
 import { classNameFactory } from "@utils/css";
-import { Tooltip } from "@webpack/common";
 import type { ReactNode } from "react";
 
 import { T } from "../i18n";
 import type { PlatformPresence } from "../presence";
+import { Hint } from "./Hint";
 import { PlatformIcon } from "./icons";
 
 export const cl = classNameFactory("vr-");
@@ -32,7 +32,6 @@ interface ActionButtonProps {
     onClick: () => void;
     active?: boolean;
     danger?: boolean;
-    /** amber tone, used by the undo button so a misclick is easy to spot and take back */
     warn?: boolean;
     disabled?: boolean;
 }
@@ -47,13 +46,12 @@ export function ActionButton({ icon, tooltip, onClick, active, danger, warn, dis
     ].filter(Boolean).join(" ");
 
     return (
-        <Tooltip text={tooltip}>
-            {tooltipProps => (
+        <Hint text={tooltip}>
+            {hintProps => (
                 <button
-                    {...tooltipProps}
+                    {...hintProps}
                     className={className}
-                    // deliberately not the native `disabled`, because browsers swallow mouse
-                    // events on those and the tooltip saying why it is off never shows
+                    // Not the native disabled, so the hint explaining why still shows on hover.
                     aria-disabled={disabled}
                     tabIndex={disabled ? -1 : undefined}
                     aria-label={tooltip}
@@ -65,7 +63,7 @@ export function ActionButton({ icon, tooltip, onClick, active, danger, warn, dis
                     {icon}
                 </button>
             )}
-        </Tooltip>
+        </Hint>
     );
 }
 
@@ -86,7 +84,6 @@ const STATUS_COLORS: Record<string, string> = {
     invisible: "var(--status-offline, #80848e)"
 };
 
-/** Discord's raw status values. Anything unrecognised falls through to the value itself. */
 function statusLabel(status: string): string {
     switch (status) {
         case "online": return T.statusOnline;
@@ -98,11 +95,6 @@ function statusLabel(status: string): string {
     }
 }
 
-/**
- * One icon per device the person is online from, each tinted by that device's own status. The same
- * thing Discord and PlatformIndicators show, and the reason somebody at a PC with a phone in their
- * pocket gets two icons instead of one word.
- */
 export function PlatformIcons({ platforms }: { platforms: PlatformPresence[]; }) {
     if (!platforms.length) return null;
 
@@ -128,7 +120,7 @@ export function PlatformIcons({ platforms }: { platforms: PlatformPresence[]; })
 }
 
 export function StatusDot({ status, mobile, known = true }: { status: string; mobile?: boolean; known?: boolean; }) {
-    // hollow ring = Discord never sent a presence for this person, so "offline" would be a guess
+    // A hollow ring means Discord never sent this person's status.
     if (!known) {
         return (
             <span

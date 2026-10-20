@@ -16,23 +16,11 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-/**
- * A short-lived cache that cannot grow forever.
- *
- * Everything cached here is keyed by a channel, a stream or a permission check, read again within a
- * fraction of a second and then never again. A plain Map would keep one dead entry per channel the
- * client ever rendered.
- *
- * Expiry happens on read, and a write past the ceiling prunes. Pruning drops only what a lookup
- * would have rejected anyway, so no lookup can see stale data because of it.
- */
 export class TtlCache<T> {
-    /** Insertion order doubles as write order. See `set`, which deletes before it inserts. */
     private readonly entries = new Map<string, { value: T; expiresAt: number; }>();
 
     constructor(private readonly defaultTtlMs: number, private readonly maxEntries: number) { }
 
-    /** undefined means never cached or expired. A cached `null` still comes back as null. */
     get(key: string): T | undefined {
         const entry = this.entries.get(key);
         if (!entry) return undefined;
@@ -45,9 +33,8 @@ export class TtlCache<T> {
         return entry.value;
     }
 
-    /** @param ttlMs overrides the default for this entry. A miss is worth less time than a hit. */
     set(key: string, value: T, ttlMs = this.defaultTtlMs): T {
-        // delete first, so re-setting a key moves it to the end. The prune below needs that order
+        // Delete first, so setting a key again moves it to the end.
         this.entries.delete(key);
         this.entries.set(key, { value, expiresAt: Date.now() + ttlMs });
 
@@ -67,7 +54,6 @@ export class TtlCache<T> {
             if (now >= entry.expiresAt) this.entries.delete(key);
         }
 
-        // everything left is still live, so the oldest writes go. They get computed again on demand
         while (this.entries.size > this.maxEntries) {
             const oldest = this.entries.keys().next().value;
             if (oldest === undefined) break;

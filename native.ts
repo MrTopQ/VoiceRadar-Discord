@@ -18,20 +18,10 @@
 
 import { BrowserWindow, globalShortcut, type IpcMainInvokeEvent } from "electron";
 
-/**
- * The hotkey inside the window is an ordinary keydown listener, which the operating system only
- * delivers while Discord has focus. This file runs in the main process, where Electron can claim the
- * combination system wide, so it also works while you are in a game or in another program.
- *
- * The radar itself still lives in Discord's window, so opening it means bringing that window up.
- * A window of our own would need its own copy of Discord's client to talk to, which is not a thing
- * a plugin can have.
- */
+/** The in-window hotkey only works while Discord has focus, so it is also registered system wide here. */
 
-/** What the plugin asked for last, so a rebind can release the previous combination. */
 let registered: string | null = null;
 
-/** The plugin writes Meta, Electron wants Super, and everything else is spelled the same way. */
 function toAccelerator(hotkey: string): string {
     return hotkey
         .split("+")
@@ -41,22 +31,9 @@ function toAccelerator(hotkey: string): string {
         .join("+");
 }
 
-/**
- * Whether this opening of the radar is also what brought Discord up. A window that was already on
- * screen is left alone when the radar closes, since putting away something the reader never asked to
- * be put away is not the hotkey's business.
- */
 let raisedByHotkey = false;
 
-/**
- * A window that sat hidden for a while comes back showing whatever frame the compositor still had,
- * and once Chromium has thrown that away, what comes back is a black rectangle. It repaints itself as
- * soon as anything else touches the window, which is why clicking the tray icon "fixed" it, so the
- * window is simply told to repaint instead of waiting for that.
- *
- * Asked more than once because the first ask can land before the window is on screen, and it costs
- * nothing when the picture was fine to begin with.
- */
+/** A window that was hidden can show a stale frame until it repaints. */
 const REPAINT_DELAYS_MS = [0, 120, 400];
 
 function repaint(window: BrowserWindow) {
@@ -67,28 +44,8 @@ function repaint(window: BrowserWindow) {
     }
 }
 
-/**
- * How long the window stays pinned on top before the pin is taken away again. See forceToFront.
- *
- * Long enough for the window manager to have acted on it, short enough that nobody sees Discord
- * sitting over their game.
- */
 const ON_TOP_RELEASE_MS = 300;
 
-/**
- * Puts the window in front, for the case where simply asking is refused.
- *
- * Windows does not let a process take the foreground unless the user is interacting with it, so
- * focus() from the background restores the window but leaves it behind whatever was already there,
- * flashing its taskbar button instead. The hotkey never ran into this, because pressing a combination the
- * process itself registered is exactly the interaction that grants the right. A click on a
- * notification is handled by the shell, and the right does not reliably come with it, which is why
- * answering a "somebody joined voice" popup left Discord exactly where it was.
- *
- * Pinning the window on top for a moment is the way round it, because the pin needs no such right
- * and focus() then lands on a window that is already in front. Whoever deliberately keeps Discord
- * on top keeps it, since the previous setting is read first and only a false one is put back.
- */
 function forceToFront(window: BrowserWindow) {
     const wasOnTop = window.isAlwaysOnTop();
 
@@ -98,8 +55,6 @@ function forceToFront(window: BrowserWindow) {
 
     if (wasOnTop) return;
 
-    // released on a timer rather than immediately, or the raise is undone in the same breath it was
-    // asked for, on the window managers that need this in the first place
     setTimeout(() => {
         if (!window.isDestroyed()) window.setAlwaysOnTop(false);
     }, ON_TOP_RELEASE_MS);
@@ -112,8 +67,6 @@ function bringUp(window: BrowserWindow) {
 
         forceToFront(window);
     } catch (error) {
-        // an unhandled throw here would travel back over IPC as a rejected call the page ignores,
-        // so the only symptom would be a window that did not move and no idea why
         console.error("[VoiceRadar-Discord] could not bring the window forward:", error);
     }
 
@@ -121,37 +74,16 @@ function bringUp(window: BrowserWindow) {
 }
 
 function reveal(window: BrowserWindow) {
-    /*
-     * Answered afresh on every opening rather than remembered from the first one. Opening the radar
-     * with the key, closing it with the mouse and opening it again is a perfectly ordinary thing to
-     * do, and by then Discord is on screen because you are using it. Keeping the old answer meant the
-     * next press put away a window you were working in.
-     *
-     * Read before the window moves, because afterwards there is nothing left to tell.
-     */
     raisedByHotkey = !window.isVisible() || window.isMinimized();
 
     bringUp(window);
 }
 
-/**
- * Brings Discord forward for something that is not the hotkey, which today means clicking a
- * notification about somebody joining voice. Opening a window inside a minimised Discord left the
- * reader looking at their game while the list waited unseen behind it.
- *
- * Deliberately does not claim the window as the hotkey's, so a later press of the key leaves it
- * alone. The key only ever puts back what the key itself brought up.
- */
 export function revealWindow(event: IpcMainInvokeEvent): void {
     const window = BrowserWindow.fromWebContents(event.sender);
     if (window) bringUp(window);
 }
 
-/**
- * Minimised rather than hidden, even when the hotkey took Discord out of the tray in the first
- * place. A minimised window is still on the taskbar and one click away, while a hidden one is gone
- * from it and has to be hunted for in the tray.
- */
 function putBack(window: BrowserWindow) {
     if (!raisedByHotkey) return;
 
@@ -159,10 +91,6 @@ function putBack(window: BrowserWindow) {
     raisedByHotkey = false;
 }
 
-/**
- * @returns false when the combination is already held by another program, which Electron reports
- * rather than throwing, and which the plugin turns into a message instead of silence.
- */
 export function registerGlobalHotkey(event: IpcMainInvokeEvent, hotkey: string): boolean {
     unregisterGlobalHotkey();
 
@@ -176,21 +104,9 @@ export function registerGlobalHotkey(event: IpcMainInvokeEvent, hotkey: string):
             const window = BrowserWindow.fromWebContents(sender);
             if (!window) return;
 
-            /*
-             * The window is asked to toggle first and answers whether the radar ended up open. Doing
-             * it in this order means a press that closes the radar never flashes Discord on screen
-             * on its way to being hidden again, which is what showing it first would do.
-             *
-             * The renderer installs this bridge while the plugin runs and drops it when it stops.
-             */
             sender.executeJavaScript("window.$VoiceRadarHotkey?.()")
                 .then(open => {
-                    /*
-                     * Anything other than a plain yes or no means there was nobody to ask. The page
-                     * reloaded, or the plugin stopped without the main process hearing about it, and
-                     * the bridge is gone. Reading that silence as "the radar is shut" and minimising
-                     * Discord is the one answer that is certainly wrong.
-                     */
+                    // Anything but true or false means the page did not answer.
                     if (typeof open !== "boolean") return;
 
                     if (open) reveal(window);
@@ -207,22 +123,7 @@ export function registerGlobalHotkey(event: IpcMainInvokeEvent, hotkey: string):
     }
 }
 
-/**
- * Chromium slows the timers of a window nobody is looking at, and after a few minutes in the
- * background it slows them to about one a minute. Everything this plugin does while you are away is
- * built on timers, so a notification that should arrive in three seconds arrived in five minutes,
- * and a silent join could hold its mute retries for just as long.
- *
- * Turning the throttling off costs the small amount of work Discord does between events, and buys
- * back the only thing the plugin is for while it sits in the tray, which is telling you in time.
- */
-/**
- * @returns whether the window actually took it.
- *
- * It used to answer nothing at all and swallow its own failure, so the page could not tell a call
- * that worked from one that threw, and the diagnostics row said the timers were awake either way.
- * That is the one thing that row exists not to do.
- */
+/** Chromium slows the timers of a background window to about one a minute. */
 export function setBackgroundThrottling(event: IpcMainInvokeEvent, throttled: boolean): boolean {
     try {
         event.sender.setBackgroundThrottling(throttled);
@@ -235,7 +136,6 @@ export function setBackgroundThrottling(event: IpcMainInvokeEvent, throttled: bo
 }
 
 export function unregisterGlobalHotkey(): void {
-    // whatever Discord was doing before, it is no longer this key's business
     raisedByHotkey = false;
 
     if (!registered) return;

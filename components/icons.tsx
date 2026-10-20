@@ -29,11 +29,7 @@ const base = (size: number) => ({
     "aria-hidden": true
 });
 
-/**
- * Device icons, drawn from Discord's own paths, the ones Vencord's PlatformIndicators uses, so a phone
- * here looks like a phone in the member list. Each keeps its own viewBox, because a phone is taller
- * than it is wide and squashing it into a square would make it a fat rectangle.
- */
+/** Discord's own device icon paths, as used by Vencord's PlatformIndicators. */
 const PLATFORM_ICONS: Record<string, { path: string; viewBox: string; }> = {
     desktop: {
         path: "M4 2.5c-1.103 0-2 .897-2 2v11c0 1.104.897 2 2 2h7v2H7v2h10v-2h-4v-2h7c1.103 0 2-.896 2-2v-11c0-1.103-.897-2-2-2H4Zm16 2v9H4v-9h16Z",
@@ -57,7 +53,6 @@ const PLATFORM_ICONS: Record<string, { path: string; viewBox: string; }> = {
     }
 };
 
-/** An unknown platform still gets an icon rather than a gap. A desktop is the safest guess. */
 export function PlatformIcon({ platform, size = 13, color, className }: IconProps & { platform: string; color?: string; }) {
     const icon = PLATFORM_ICONS[platform] ?? PLATFORM_ICONS.desktop;
 
@@ -143,7 +138,6 @@ export function MicOffIcon({ size = 18, className }: IconProps) {
     );
 }
 
-/** Headphones with a slash. They hear nothing, so the mic is off as well. */
 export function DeafIcon({ size = 18, className }: IconProps) {
     return (
         <svg {...base(size)} className={className}>
@@ -165,7 +159,6 @@ export function SpeakerIcon({ size = 16, className }: IconProps) {
     );
 }
 
-/** Speaker with a padlock, shown when you are not allowed into that voice channel. */
 export function LockedSpeakerIcon({ size = 16, className }: IconProps) {
     return (
         <svg {...base(size)} className={className}>
@@ -187,7 +180,6 @@ export function LockIcon({ size = 18, className }: IconProps) {
     );
 }
 
-/** Waiting for a slot in a full channel. */
 export function ClockIcon({ size = 18, className }: IconProps) {
     return (
         <svg {...base(size)} className={className}>
@@ -197,7 +189,6 @@ export function ClockIcon({ size = 18, className }: IconProps) {
     );
 }
 
-/** Moderator, keep someone glued to your channel. */
 export function MagnetIcon({ size = 18, className }: IconProps) {
     return (
         <svg {...base(size)} className={className}>
@@ -211,7 +202,6 @@ export function MagnetIcon({ size = 18, className }: IconProps) {
     );
 }
 
-/** Moderator, drag someone into your own channel. */
 export function PullIcon({ size = 18, className }: IconProps) {
     return (
         <svg {...base(size)} className={className}>
@@ -222,7 +212,6 @@ export function PullIcon({ size = 18, className }: IconProps) {
     );
 }
 
-/** Moderator, undo. Put them back where you took them from. */
 export function ReturnIcon({ size = 18, className }: IconProps) {
     return (
         <svg {...base(size)} className={className}>
@@ -241,7 +230,6 @@ export function TrashIcon({ size = 18, className }: IconProps) {
     );
 }
 
-/** Their webcam is on. */
 export function CameraIcon({ size = 16, className }: IconProps) {
     return (
         <svg {...base(size)} className={className}>
@@ -256,6 +244,65 @@ export function StreamIcon({ size = 16, className }: IconProps) {
         <svg {...base(size)} className={className}>
             <rect x="2.5" y="5" width="14" height="10" rx="2" fill="currentColor" />
             <path d="M18.5 9 22 6.7v10.6L18.5 15V9Z" fill="currentColor" />
+        </svg>
+    );
+}
+
+export function InfoIcon({ size = 14, className }: IconProps) {
+    return (
+        <svg {...base(size)} className={className}>
+            <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="1.8" />
+            <path d="M12 11v5.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            <circle cx="12" cy="7.8" r="1.1" fill="currentColor" />
+        </svg>
+    );
+}
+
+export function SearchIcon({ size = 16, className }: IconProps) {
+    return (
+        <svg {...base(size)} className={className}>
+            <circle cx="10.5" cy="10.5" r="6.5" stroke="currentColor" strokeWidth="2" />
+            <path d="m15.5 15.5 5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+    );
+}
+
+export function CloseIcon({ size = 18, className }: IconProps) {
+    return (
+        <svg {...base(size)} className={className}>
+            <path d="M6 6l12 12M18 6 6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+    );
+}
+
+export function MicIcon({ size = 16, className }: IconProps) {
+    return (
+        <svg {...base(size)} className={className}>
+            <rect x="9" y="3" width="6" height="11" rx="3" stroke="currentColor" strokeWidth="1.8" />
+            <path d="M6 11.5a6 6 0 0 0 12 0M12 17.5V21" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        </svg>
+    );
+}
+
+export function KeyboardIcon({ size = 16, className }: IconProps) {
+    return (
+        <svg {...base(size)} className={className}>
+            <rect x="2.5" y="6" width="19" height="12" rx="2.5" stroke="currentColor" strokeWidth="1.8" />
+            <path d="M6.5 10h1M10 10h1M13.5 10h1M17 10h.5M8 14h8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        </svg>
+    );
+}
+
+export function GearIcon({ size = 16, className }: IconProps) {
+    return (
+        <svg {...base(size)} className={className}>
+            <path
+                d="M10.3 3h3.4l.5 2.4 1.6.9 2.3-.8 1.7 2.9-1.8 1.6v1.9l1.8 1.6-1.7 2.9-2.3-.8-1.6.9-.5 2.5h-3.4l-.5-2.5-1.6-.9-2.3.8-1.7-2.9 1.8-1.6v-1.9L4.2 8.4l1.7-2.9 2.3.8 1.6-.9.5-2.4Z"
+                stroke="currentColor"
+                strokeWidth="1.7"
+                strokeLinejoin="round"
+            />
+            <circle cx="12" cy="12" r="2.8" stroke="currentColor" strokeWidth="1.7" />
         </svg>
     );
 }

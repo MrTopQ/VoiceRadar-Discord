@@ -27,11 +27,12 @@ import { refreshGuildSubscriptions } from "./guildSubscriptions";
 import { T } from "./i18n";
 import { joinVoiceChannel } from "./join";
 import { getReturnableBatch, sendBatchBack } from "./moveHistory";
-import { canMoveUser, canShowMagnet, isModeratorMode } from "./movePermissions";
+import { canMoveUser, canShowMagnet, canShowStickyMute, isModeratorMode } from "./movePermissions";
 import { getStoredName, getUserDisplayName, UNKNOWN_NAME } from "./names";
 import { pullTheirChannelToMe, pullToMyChannel, pullUsersToMe } from "./pull";
 import { cancelQueue, isQueuedFor, queueForChannel } from "./queue";
 import { settings } from "./settings";
+import { isStickyMuteLimitReached, toggleStickyMuteFor } from "./stickyMute";
 import { addUser, addUsers, getTrackedUser, removeUser, toggleNotify, togglePin } from "./store";
 import { toast, ToastType } from "./toast";
 
@@ -39,14 +40,6 @@ interface UserContextProps {
     user?: { id: string; username?: string; };
 }
 
-/**
- * Where the entry belongs depends on which menu this is. A voice member has a volume slider, and
- * the voice-related entries live around it. A DM has no such thing, and the natural home there is
- * beside the entry that closes the conversation. Tried in that order, most specific first.
- *
- * The volume slider's id is not a name Discord promises, so it is matched loosely. The other two are
- * Discord's own ids and are matched exactly.
- */
 const MENU_ANCHORS = [
     { id: "volume", loose: true },
     { id: "close-dm", loose: false },
@@ -64,30 +57,35 @@ function insertNearAnchor(children: any[], item: ReactElement) {
 
         if (index < 0) continue;
 
-        // directly under the entry itself, not under the whole block it happens to live in
         group.splice(index + 1, 0, item);
         return;
     }
 
-    // no anchor at all, so above the last group, where the copy-id block usually sits
     children.splice(Math.max(1, children.length - 1), 0, item);
 }
 
+/** Resolved when a menu is built, because a Discord update can move these. */
+function menuParts() {
+    const menu = Menu as any;
+    return {
+        CheckboxItem: menu.MenuCheckboxItem ?? menu.MenuItem,
+        Separator: menu.MenuSeparator ?? (() => null)
+    };
+}
+
 export const userContextPatch: NavContextMenuPatchCallback = (children, { user }: UserContextProps) => {
+    const { CheckboxItem, Separator } = menuParts();
     if (!user?.id) return;
     if (user.id === UserStore.getCurrentUser()?.id) return;
 
     const tracked = getTrackedUser(user.id);
-    // two names on purpose. The stored one goes into the saved list and must never be a translated
-    // placeholder, the displayed one is what the toasts read. See getStoredName
     const storedName = getStoredName(user.id, user.username ?? UNKNOWN_NAME);
     const name = getUserDisplayName(user.id, storedName);
     const voice = getVoiceInfo(user.id);
     const canMove = canMoveUser(user.id);
     const returnable = getReturnableBatch().length;
-    // the magnet entry stays reachable once armed, even after its target leaves voice, otherwise
-    // there is nowhere left to switch the flag off
-    const showModeration = (voice != null && canMove) || canShowMagnet(user.id);
+    const showStickyMute = canShowStickyMute(user.id);
+    const showModeration = (voice != null && canMove) || canShowMagnet(user.id) || showStickyMute;
 
     insertNearAnchor(children, (
         <Menu.MenuItem id="voice-radar" key="voice-radar" label={T.menuRoot}>
@@ -100,14 +98,13 @@ export const userContextPatch: NavContextMenuPatchCallback = (children, { user }
                         toast(T.userRemovedFromRadar(name), ToastType.SUCCESS);
                     } else {
                         addUser(user.id, storedName);
-                        // their server may be one nobody has opened this session, and until it is
-                        // watched they read as "not in voice" wherever they actually are
+                        // Their server may not be watched yet, so it is asked for now.
                         refreshGuildSubscriptions();
                         toast(T.userAddedToRadar(name), ToastType.SUCCESS);
                     }
                 }}
             />
-            <Menu.MenuCheckboxItem
+            <CheckboxItem
                 id="voice-radar-pin"
                 label={T.menuPin}
                 checked={!!tracked?.pinned}
@@ -116,7 +113,7 @@ export const userContextPatch: NavContextMenuPatchCallback = (children, { user }
                     else togglePin(user.id);
                 }}
             />
-            <Menu.MenuCheckboxItem
+            <CheckboxItem
                 id="voice-radar-notify"
                 label={T.menuNotify}
                 checked={!!tracked?.notify}
@@ -125,14 +122,13 @@ export const userContextPatch: NavContextMenuPatchCallback = (children, { user }
                     else toggleNotify(user.id);
                 }}
             />
-            <Menu.MenuCheckboxItem
+            <CheckboxItem
                 id="voice-radar-autojoin"
                 label={T.menuAutoJoin}
                 checked={!!tracked?.autoJoin}
-                // the same handler the row button uses, so the menu also toasts what it just did
                 action={() => toggleAutoJoinFor(user.id, storedName)}
             />
-            <Menu.MenuSeparator />
+            <Separator />
             <Menu.MenuItem
                 id="voice-radar-jump"
                 label={settings.store.silentJoin ? T.menuJumpMuted : T.menuJump}
@@ -180,16 +176,22 @@ export const userContextPatch: NavContextMenuPatchCallback = (children, { user }
                             action={() => void sendBatchBack()}
                         />
                     )}
-                    {/* only when there is something above it: with the target out of voice the
-                        magnet is the entire submenu, and a leading separator looks like a bug */}
-                    {((voice && canMove) || returnable >= 2) && <Menu.MenuSeparator />}
-                    <Menu.MenuCheckboxItem
+                    {((voice && canMove) || returnable >= 2) && <Separator />}
+                    <CheckboxItem
                         id="voice-radar-autopull"
                         label={T.menuMagnet}
                         checked={!!tracked?.autoPull}
-                        // same handler as the row button, so it toasts and pulls them over
                         action={() => toggleMagnetFor(user.id, storedName)}
                     />
+                    {showStickyMute && (
+                        <CheckboxItem
+                            id="voice-radar-sticky-mute"
+                            label={T.menuStickyMute}
+                            checked={!!tracked?.stickyMute}
+                            disabled={!tracked?.stickyMute && isStickyMuteLimitReached()}
+                            action={() => toggleStickyMuteFor(user.id, storedName)}
+                        />
+                    )}
                 </Menu.MenuItem>
             )}
         </Menu.MenuItem>
@@ -200,9 +202,9 @@ interface ChannelContextProps {
     channel?: { id: string; type: number; };
 }
 
-/** Right-clicking the voice channel itself. Actions that are about the whole channel. */
 export const channelContextPatch: NavContextMenuPatchCallback = (children, { channel }: ChannelContextProps) => {
-    // 2 = voice channel, 13 = stage
+    const { CheckboxItem, Separator } = menuParts();
+    // 2 is a voice channel, 13 a stage.
     if (!channel?.id || (channel.type !== 2 && channel.type !== 13)) return;
 
     const info = getChannelInfo(channel.id);
@@ -229,14 +231,11 @@ export const channelContextPatch: NavContextMenuPatchCallback = (children, { cha
                         const me = UserStore.getCurrentUser()?.id;
                         const wanted = info.participantIds
                             .filter(participantId => participantId !== me)
-                            // stored, not displayed. See getStoredName
                             .map(participantId => ({
                                 id: participantId,
                                 name: getStoredName(participantId)
                             }));
 
-                        // one commit for the channel, and only as many as the limit still has room
-                        // for, since every one of these is protected from it afterwards
                         const added = addUsers(wanted);
                         const left = wanted.length - added;
 

@@ -16,47 +16,70 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-import { Toasts } from "@webpack/common";
+// The whole module, so exports that Vencord removes do not break the build.
+import * as Common from "@webpack/common";
 
-import { reportBroken } from "./apiHealth";
+import { proveWorking, reportBroken } from "./apiHealth";
 import { T } from "./i18n";
 
-/** A toast lives about three seconds. Inside that window ours is still on screen. */
+export const ToastType = {
+    MESSAGE: "message",
+    SUCCESS: "success",
+    FAILURE: "failure"
+} as const;
+
+export type ToastKind = typeof ToastType[keyof typeof ToastType];
+
 const REPLACE_WINDOW_MS = 3500;
+
+const VARIANTS: Record<ToastKind, string> = {
+    message: "default",
+    success: "success",
+    failure: "critical"
+};
 
 let ourToastShownAt = 0;
 
-/**
- * Ours replace each other instead of queueing, so a row of clicks does not keep popping for a
- * minute. Only inside the window above, where the visible toast is ours, so nobody else's is eaten.
- *
- * Showing can fail, because Vencord finds these functions by matching mangled code. A toast only
- * ever describes an action, so its failure must not take the action down with it.
- */
-export function toast(message: string, type: string = Toasts.Type.MESSAGE) {
-    if (Date.now() - ourToastShownAt < REPLACE_WINDOW_MS) {
-        try {
-            Toasts.pop();
-        } catch {
-            /* nothing to dismiss */
-        }
+function showWithAnyApi(message: string, type: ToastKind) {
+    const common = Common as any;
+    const toasts = common.Toasts;
+
+    if (typeof common.createToast === "function" && typeof toasts?.show === "function") {
+        toasts.show(common.createToast({ message, type }));
+        return;
     }
+
+    if (typeof toasts?.create === "function" && typeof toasts?.show === "function") {
+        toasts.show(toasts.create(message, type));
+        return;
+    }
+
+    if (typeof common.showToast !== "function") {
+        throw new Error("this Vencord has no toast API the plugin knows");
+    }
+
+    common.showToast({ text: message, variant: VARIANTS[type] });
+}
+
+function dismissOurLastToast() {
+    try {
+        const pop = (Common as any).Toasts?.pop;
+        if (typeof pop === "function") pop();
+    } catch {
+    }
+}
+
+export function toast(message: string, type: ToastKind = ToastType.MESSAGE) {
+    if (Date.now() - ourToastShownAt < REPLACE_WINDOW_MS) dismissOurLastToast();
 
     ourToastShownAt = Date.now();
 
     try {
-        Toasts.show(Toasts.create(message, type));
+        showWithAnyApi(message, type);
+        proveWorking(T.apiToasts);
     } catch (error) {
-        // the console is the only place left for it
         console.warn("[VoiceRadar-Discord] could not show a toast:", message, error);
 
-        /*
-         * No startup probe stands in for this. Toasts are found by matching mangled code and handed
-         * over as a lazy proxy, and every test short of showing one comes back true whether or not
-         * the search ever found anything, so the failure itself is the only honest report.
-         */
         reportBroken(T.apiToasts);
     }
 }
-
-export const ToastType = Toasts.Type;

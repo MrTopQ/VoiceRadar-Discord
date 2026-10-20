@@ -21,10 +21,7 @@ export interface Throttled {
     cancel(): void;
 }
 
-/**
- * Runs immediately, swallows further calls for `delay` ms, then replays the last one at the end of
- * the window. Voice events arrive in bursts, so one burst costs two redraws instead of dozens.
- */
+/** Runs at once, then replays the last call at the end of the delay. */
 export function throttle(callback: () => void, delay: number): Throttled {
     let lastRun = 0;
     let timeout: ReturnType<typeof setTimeout> | null = null;

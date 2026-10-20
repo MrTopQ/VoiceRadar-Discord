@@ -17,15 +17,15 @@
 */
 
 import { openImageModal } from "@utils/discord";
-import { Tooltip, useEffect, useState } from "@webpack/common";
+import { useEffect, useState } from "@webpack/common";
 
 import { T } from "../i18n";
 import { getStreamFor, getStreamPreviewUrl, type StreamRef } from "../streams";
 import { toast, ToastType } from "../toast";
 import { cl } from "./common";
+import { Hint } from "./Hint";
 import { StreamIcon } from "./icons";
 
-/** Loaded on hover. Discord refreshes these thumbnails every few minutes. */
 function StreamPreviewCard({ stream, name }: { stream: StreamRef; name: string; }) {
     const [url, setUrl] = useState<string | null>(null);
     const [failed, setFailed] = useState(false);
@@ -33,7 +33,6 @@ function StreamPreviewCard({ stream, name }: { stream: StreamRef; name: string; 
     useEffect(() => {
         let cancelled = false;
 
-        // a previous failure must not stick when the stream changes
         setUrl(null);
         setFailed(false);
 
@@ -76,17 +75,16 @@ export function StreamIndicator({ userId, name }: { userId: string; name: string
 
             openImageModal({ url, height: 720, width: 1280 });
         } catch (error) {
-            // a click handler is not the place for an unhandled rejection
             console.warn("[VoiceRadar-Discord] could not open the stream preview:", error);
             toast(T.streamPreviewMissingFor(name), ToastType.FAILURE);
         }
     };
 
     return (
-        <Tooltip text={<StreamPreviewCard stream={stream} name={name} />}>
-            {tooltipProps => (
+        <Hint text={<StreamPreviewCard stream={stream} name={name} />}>
+            {hintProps => (
                 <span
-                    {...tooltipProps}
+                    {...hintProps}
                     className={cl("stream-badge")}
                     role="button"
                     onClick={event => {
@@ -98,6 +96,6 @@ export function StreamIndicator({ userId, name }: { userId: string; name: string
                     {T.badgeLive}
                 </span>
             )}
-        </Tooltip>
+        </Hint>
     );
 }

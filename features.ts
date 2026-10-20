@@ -19,6 +19,7 @@
 import { getApiHealth } from "./apiHealth";
 import { T } from "./i18n";
 import { CHIME_SOUND, getJoinSound, settings } from "./settings";
+import { getStickyMuted } from "./store";
 
 export type FeatureLevel = "good" | "waiting" | "bad";
 
@@ -28,41 +29,14 @@ export interface FeatureRow {
     level: FeatureLevel;
 }
 
-/**
- * One thing the plugin does, next to the Discord internals it is built on.
- *
- * The probes themselves live beside the code that uses them, which is right, but a pile of probe
- * names is not an answer to "does the plugin still work". A reader wants to know whether they can
- * still pull somebody over, not whether RestAPI.patch is where it was. This is the translation
- * between the two, and it is deliberately the only place that knows it, so a feature that gains a
- * dependency gains it here and nowhere else.
- */
 interface Feature {
     title: string;
-    /** What it says when everything behind it is where the plugin expects it. */
     works: string;
-    /**
-     * The labels this feature stands on, exactly as the probes report them. Matching is by string
-     * because that is what a report is made of, and the alternative is a second list of ids that
-     * can drift away from the first.
-     */
     parts: string[];
-    /**
-     * Whether the reader switched this one off.
-     *
-     * A feature nobody asked for has no parts worth judging, and judging it anyway produced the
-     * quiet lie this whole page exists to avoid. With the panel button turned off the row still
-     * announced a button next to the mic and headphones. With silent join off it promised the mic
-     * would be muted on every join. Both were green, and both were describing something the reader
-     * had themselves turned off.
-     */
     off?: () => boolean;
 }
 
-/**
- * Read fresh on every open, because every label is a translation and the language can change while
- * Discord runs. A list built once at import would be matched against reports written in another one.
- */
+/** Read on every open, because the language can change while Discord runs. */
 function features(): Feature[] {
     return [
         {
@@ -71,11 +45,6 @@ function features(): Feature[] {
             parts: [T.apiWhoIsInVoice, T.apiChannelMembers, T.apiMyChannel, T.apiChannelInfo]
         },
         {
-            /*
-             * Reading the stores says where everybody is this second. This is what says that it
-             * changed, and nothing here polls for that, so losing it leaves a plugin that looks
-             * right whenever you open the window and never tells you anything on its own.
-             */
             title: T.healthTrackerTitle,
             works: T.healthTrackerOk,
             parts: [T.apiVoiceEvents]
@@ -123,13 +92,17 @@ function features(): Feature[] {
             off: () => !settings.store.moderatorMode
         },
         {
+            title: T.healthStickyMuteTitle,
+            works: T.healthStickyMuteOk,
+            parts: [T.apiModeratorActions, T.apiMuteMembersFlag, T.apiVoiceEvents],
+            off: () => !settings.store.moderatorMode && getStickyMuted().length === 0
+        },
+        {
             title: T.healthWindowTitle,
             works: T.healthWindowOk,
             parts: [T.apiWindow]
         },
         {
-            // the component and the patch that makes a place for it are two different ways to lose
-            // the same button, and neither of them is the other's symptom
             title: T.healthPanelButtonTitle,
             works: T.healthPanelButtonOk,
             parts: [T.apiPanelButton, T.apiPanelButtonPatch],
@@ -142,8 +115,6 @@ function features(): Feature[] {
             off: () => getJoinSound() === "off"
         },
         {
-            // no probe can answer for these, so the only report is a failure that already happened.
-            // Green here means nothing has gone wrong yet, which is all anybody can say about them
             title: T.healthToastsTitle,
             works: T.healthToastsOk,
             parts: [T.apiToasts]
@@ -151,21 +122,9 @@ function features(): Feature[] {
     ];
 }
 
-/**
- * Every feature with a colour and a sentence. The severity is decided where the probe was written,
- * since only the module that needs a thing knows whether losing it is fatal or merely a shame.
- */
 export function featureRows(): FeatureRow[] {
     const { broken, degraded, checked } = getApiHealth();
 
-    /*
-     * Nothing has been asked, so nothing can be answered.
-     *
-     * A feature is green here by the absence of a complaint about it, which is the right rule while
-     * the probes have run and the wrong one before they have. The startup check is guarded, and the
-     * one time it falls over is a Discord update deep enough to take the check down with it, which
-     * is exactly when a page of green ticks would be furthest from the truth.
-     */
     if (!checked) {
         return features().map(feature => ({
             title: feature.title,
@@ -175,11 +134,6 @@ export function featureRows(): FeatureRow[] {
     }
 
     return features().map(feature => {
-        /*
-         * Asked before the parts, because a feature nobody wants cannot be broken. Green rather
-         * than amber, since a switch the reader threw themselves is not a fault, and the sentence
-         * says which it is.
-         */
         if (feature.off?.()) {
             return { title: feature.title, level: "good" as const, detail: T.healthFeatureOff };
         }

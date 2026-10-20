@@ -10,24 +10,38 @@ Vencord plugin. Remembers everyone you shared a voice channel with and shows whe
 - **Two tabs.** Pinned and Recent, each with its own count plus a green one for who is in voice right
   now. Pinned rows drag into any order.
 - **Per row.** Channel, server, headcount, status, activity chip, mic, headphones, camera, when you
-  last sat together, and one icon per device the person is online from.
+  last sat together, when they left voice, and one icon per device the person is online from. A right
+  click opens Discord's own menu for that person.
 - **Join.** A button on every row and in the right-click menu. Padlock on channels you cannot enter,
   a queue on full ones, and hidden channels still name their members on hover.
-- **Silent join** (off by default). Joins the plugin makes start with your mic off.
-- **Auto-join.** Pick one person and you follow them, including into a full channel once a slot
-  opens, and the wait moves with them. Walking out of their channel, or out of voice altogether,
-  leaves that channel alone until they move somewhere else. Somebody else disconnecting you or moving
-  you out is undone instead, up to six times a minute.
+- **Mute mic on auto-join** (off by default). Joins the plugin makes start with your mic off.
+- **Auto-join.** Pick one person and you follow them, with no other switch to turn on. The target sits
+  on its own card at the top of the window, with a button to stop. You follow them into a full
+  channel once a slot opens, and the wait moves with them. Walking out of their channel, or out of
+  voice altogether, leaves that channel alone until they move somewhere else. Somebody else
+  disconnecting you or moving you out is undone instead, up to six times a minute.
 - **Queue.** Holds your place in a full channel until you get in or cancel.
+- **History.** A button under each name opens where that person has been seen going: every join, move
+  and leave with the time, the last time they sat with you, and how often they showed up this week.
 - **Notifications.** A bell per person, naming the channel. Several joins collapse into one. A click
   opens their row and brings Discord forward. A sound goes with it, which is what reaches you over a
   fullscreen game, where Windows swallows the notification itself.
 - **Stream preview.** `LIVE` badge, thumbnail on hover, full size on click.
-- **Search.** Nickname, display name or username, plus a chip for whoever is in voice this second.
+- **Search.** Nickname, display name or username, and a switch between everybody and only whoever
+  is in voice this second. Typing anywhere in the window goes into the search, and the first `Esc`
+  empties it.
 - **Hotkey.** `Alt+2` opens and closes the window. Rebindable, and claimable system wide.
+- **Windows.** The radar, the history, the join list and the health page are drawn on their own
+  rather than as Discord modals, which is what lets them open without a stall. A row's buttons sit in
+  two strips, voice first and the list second, and whatever Discord opens from a window still comes
+  up on top of it.
+- **Startup.** Servers are asked for voice states ten at a time, so the radar is ready a few seconds
+  after Discord logs in.
 - **Moderator mode** (off by default). Pull one person or a whole channel to you (99 per click,
   confirmation past eight, four moves at a time by default), undo a pull, magnet one person back each
-  time they leave. Needs Move Members in both channels of the same server.
+  time they leave. Needs Move Members in both channels of the same server. A sticky mute server-mutes
+  a person again whenever the mute is lifted or they rejoin, in any server where you hold Mute
+  Members, until you switch it off.
 - **UI.** Account panel button with a counter, submenu in user menus and profiles, entry in voice and
   stage channel menus.
 - **Languages.** English and Russian, following Discord by default.
@@ -56,8 +70,7 @@ Eighteen, in panel order. Vencord prints a longer description beside each.
 | Language | dropdown | Auto | Auto (follow Discord), English, Русский |
 | People the list keeps | slider, 5 to 100 | 15 | Pinned people take slots too |
 | Hotkey | text | `Alt+2` | Opens and closes the window |
-| Silent join | switch | off | Mutes your mic on every join the plugin makes |
-| Auto-join | switch | on | You follow your target, waiting for a slot when needed |
+| Mute mic on auto-join | switch | off | Mutes your mic on every join the plugin makes |
 | Only follow when idle | switch | off | Never pulls you out of a call |
 | Auto-join cooldown | seconds | 5 | Gap between two auto-joins, clamped to 2s and 5min |
 | Notification style | dropdown | Notification | Corner notification, Toast, or Both |
@@ -68,7 +81,7 @@ Eighteen, in panel order. Vencord prints a longer description beside each.
 | Servers watched for voice | slider, 10 to 200 | 100 | Discord only sends voice states for subscribed servers, so joins past this number go unseen. Your people's servers come first, and the window says how many did not fit |
 | Keep timers awake | switch | on | Holds Discord's timers at normal pace in the background, so a join reaches you in seconds instead of minutes |
 | Group move speed | dropdown | Fast | Careful sends one move at a time, Fast four, Instant eight. Every move is a line in the server's audit log |
-| Moderator mode | switch | off | Adds pull, undo and magnet where you hold Move Members |
+| Moderator mode | switch | off | Adds pull, undo, magnet and sticky mute where you hold the permission |
 | Panel button | switch | on | Goes away at once, needs a restart to come back |
 | Hotkey system wide | switch | off | The hotkey fires while Discord sits in the background and brings it up. Needs a full restart |
 
@@ -96,3 +109,5 @@ GPL-3.0. See [LICENSE](LICENSE).
 ![Panel Button](screenshots/panel-button.png)
 
 ![Right-Click Menu](screenshots/context-menu.png)
+
+![History](screenshots/history.png)

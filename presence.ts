@@ -23,30 +23,20 @@ import { voiceStateForUser } from "./channels";
 import { T } from "./i18n";
 import { getTrackedUser, getUsers } from "./store";
 
-/** One device Discord says they are online from, with the status that device reports. */
 export interface PlatformPresence {
-    /** desktop, mobile, web, embedded or vr, whatever Discord names it */
     platform: string;
     status: string;
 }
 
-/** What the person is doing, so the row can colour it. Discord's activity types, by name. */
 export type ActivityKind = "playing" | "streaming" | "listening" | "watching" | "competing" | "custom";
 
 export interface PresenceInfo {
     status: string;
-    /** every device at once, in a fixed order, so a phone plus a PC shows both */
     platforms: PlatformPresence[];
-    /** derived from `platforms`, and only still here because the status dot's tooltip names it */
     isMobile: boolean;
     activity: string | null;
-    /** null together with `activity`, set to its kind otherwise */
     activityKind: ActivityKind | null;
-    /**
-     * False when Discord never sent us a presence for this person, which happens for somebody who
-     * is not a friend and sits in no loaded member list. getStatus() answers "offline" there, and
-     * that is a lie, so the list shows "unknown" instead.
-     */
+    /** False when Discord never sent a presence for this person. */
     known: boolean;
 }
 
@@ -80,14 +70,6 @@ function formatActivity(activity: any): string | null {
     }
 }
 
-/**
- * Whether Discord actually sent us a presence for this person, as opposed to getStatus() defaulting
- * to "offline" for somebody it knows nothing about.
- *
- * When the store's shape cannot be read at all, this answers yes. Taking the status at face value
- * costs one possibly wrong dot, answering no would paint every row as unknown and lose the real
- * statuses with it.
- */
 function hasPresenceData(userId: string): boolean {
     try {
         const statuses = (PresenceStore as any)?.getState?.()?.statuses;
@@ -98,19 +80,9 @@ function hasPresenceData(userId: string): boolean {
     }
 }
 
-/** The order the icons are drawn in, so a row does not reshuffle them between redraws. */
 const PLATFORM_ORDER = ["desktop", "mobile", "web", "embedded", "vr"];
 
-/**
- * Which devices they are online from, straight out of the store. The same source Vencord's own
- * PlatformIndicators reads, so an icon here means what the same icon means in the member list.
- *
- * Deliberately not isMobileOnline. That answers one bit, cannot report a phone and a PC at once, and
- * PlatformIndicators patches it to ignore the status entirely. This asks per device instead, and
- * keeps the flag only as a fallback for the day getClientStatus moves.
- */
 function getPlatforms(userId: string, status: string): PlatformPresence[] {
-    // an offline (or invisible) person has no device worth drawing, whatever the store still holds
     if (status === "offline") return [];
 
     try {
@@ -120,13 +92,11 @@ function getPlatforms(userId: string, status: string): PlatformPresence[] {
             return Object.entries(byPlatform as Record<string, string>)
                 .map(([platform, platformStatus]) => ({
                     platform,
-                    // a device with no status of its own still belongs to the person's overall one
                     status: String(platformStatus || status)
                 }))
                 .sort((a, b) => PLATFORM_ORDER.indexOf(a.platform) - PLATFORM_ORDER.indexOf(b.platform));
         }
     } catch {
-        /* fall back to the flag */
     }
 
     return (PresenceStore as any)?.isMobileOnline?.(userId)
@@ -154,29 +124,14 @@ export function getPresenceInfo(userId: string): PresenceInfo {
         platforms,
         isMobile: platforms.some(entry => entry.platform === "mobile"),
         activity,
-        // a type Discord adds later still gets the plain treatment rather than no colour at all
         activityKind: activity ? ACTIVITY_KINDS[primary?.type] ?? "playing" : null,
         known
     };
 }
 
-/**
- * Asks the gateway for members and presences Discord never pushed to us. The same op 8 request the
- * client fires when you scroll a member list, and what Vencord's own plugins use. No REST call, no
- * rate limit, up to 100 users in one message.
- */
 const PRESENCE_REQUEST_COOLDOWN_MS = 60_000;
-/** Opening and closing the window in a hurry must not turn into a stream of gateway requests. */
 const PRESENCE_REQUEST_GAP_MS = 5000;
 const MAX_USERS_PER_REQUEST = 100;
-/**
- * How many servers one request may name.
- *
- * The client asks about the one server whose member list you are looking at. Naming every server you
- * are in is a different kind of request, and it is the shape a scraper has. The list below is built
- * from where these people actually are, or were last seen, so it is short by construction, and the
- * cap is only there for somebody whose list spans dozens of servers.
- */
 const MAX_GUILDS_PER_REQUEST = 10;
 const presenceRequestedAt = new Map<string, number>();
 let lastPresenceRequestAt = 0;
@@ -184,24 +139,11 @@ let lastPresenceRequestAt = 0;
 const guildIdOfChannel = (channelId: string | null | undefined): string | null =>
     (channelId ? (ChannelStore.getChannel(channelId) as any)?.guild_id ?? null : null);
 
-/** Where this person is sitting, or where the list last saw them. Null when neither is known. */
 function guildIdOfUser(userId: string): string | null {
     return guildIdOfChannel(voiceStateForUser(userId)?.channelId)
         ?? guildIdOfChannel(getTrackedUser(userId)?.lastChannelId);
 }
 
-/**
- * The servers worth naming for this batch, in order of how likely they are to be the right one.
- * where these people are sitting, where the list last saw them, and failing both, the servers the
- * rest of the list lives in.
- *
- * That last step is what keeps somebody added straight from their profile from being a dead end.
- * They have no voice history of their own, but the people you watch share servers, so the answer is
- * almost always in there, and it costs a short list rather than every server on the account.
- *
- * Naming every server was what this used to do, and it is the one request here that looks nothing
- * like the client's own, which asks about the one server whose member list you are looking at.
- */
 function guildIdsFor(userIds: string[]): string[] {
     const wanted = new Set<string>();
 
@@ -212,7 +154,6 @@ function guildIdsFor(userIds: string[]): string[] {
         if (guildId) wanted.add(guildId);
     }
 
-    // the circle these people belong to, for the ones who came in without a channel behind them
     for (const user of getUsers()) {
         if (!room()) break;
 
@@ -252,7 +193,6 @@ export function requestPresences(userIds: string[]): void {
     }
 }
 
-/** Everything this file remembers about who it has already asked for, dropped on shutdown. */
 export function resetPresenceRequests(): void {
     presenceRequestedAt.clear();
     lastPresenceRequestAt = 0;
@@ -261,7 +201,6 @@ export function resetPresenceRequests(): void {
 export function presenceProblems(): ApiHealth {
     return new HealthReport()
         .nice(() => isFn((PresenceStore as any)?.getStatus), T.apiStatuses)
-        // one of the two is enough, since the flag is the fallback the device icons already use
         .nice(
             () => isFn((PresenceStore as any)?.getClientStatus) || isFn((PresenceStore as any)?.isMobileOnline),
             T.apiDevices

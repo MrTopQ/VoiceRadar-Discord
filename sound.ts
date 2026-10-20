@@ -16,10 +16,12 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-import { findByPropsLazy } from "@webpack";
+import { findByCodeLazy, findByPropsLazy } from "@webpack";
 
-import { isFn, probe } from "./apiHealth";
+import { isFn, isFound, probe } from "./apiHealth";
 import { CHIME_SOUND, getJoinSound, getJoinSoundVolume } from "./settings";
+
+const playByCode = findByCodeLazy(".playWithListener()", "getSoundpack()");
 
 const soundPlayer = findByPropsLazy("playSound");
 const soundFactory = findByPropsLazy("createSound");
@@ -34,6 +36,10 @@ let lastPlayedAt = 0;
 let chimeContext: AudioContext | null = null;
 
 function discordPlayer(): ((name: string, volume?: number) => void) | null {
+    if (isFound(playByCode)) {
+        return (name, volume) => (playByCode as any)(name, volume);
+    }
+
     if (probe(() => isFn((soundPlayer as any)?.playSound))) {
         return (name, volume) => (soundPlayer as any).playSound(name, volume);
     }

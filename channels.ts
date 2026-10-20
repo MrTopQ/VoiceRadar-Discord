@@ -29,28 +29,25 @@ export interface VoiceInfo {
     guildId: string | null;
     guildName: string | null;
     memberCount: number;
-    /** everyone sitting in that channel, resolved once and reused by the row and its tooltip */
     participantIds: string[];
-    /** mic off, either by themselves or muted by a moderator */
     isMuted: boolean;
-    /** headphones off, so they hear nothing at all, and are muted too */
     isDeafened: boolean;
     selfVideo: boolean;
     selfStream: boolean;
     isMyChannel: boolean;
-    /** you are allowed to see the channel */
     canView: boolean;
-    /** you are allowed to actually connect to it */
     canJoin: boolean;
-    /** user limit reached and you have no Move Members to bypass it */
     isFull: boolean;
 }
 
 export function getMyChannelId(): string | null {
-    return SelectedChannelStore.getVoiceChannelId() ?? null;
+    try {
+        return SelectedChannelStore?.getVoiceChannelId?.() ?? null;
+    } catch {
+        return null;
+    }
 }
 
-/** The server your own voice channel belongs to. Null in a DM call or when not connected. */
 export function getMyGuildId(): string | null {
     const channelId = getMyChannelId();
     if (!channelId) return null;
@@ -65,7 +62,6 @@ export function getChannelName(channel: any): string {
     return T.unknownChannel;
 }
 
-/** "Guild · Channel", the one label every list, tooltip and toast in the plugin uses. */
 export function channelLabel(info: VoiceInfo): string {
     return info.guildName ? `${info.channelName} · ${info.guildName}` : info.channelName;
 }
@@ -74,16 +70,9 @@ export function describeChannel(channelId: string): string {
     return channelLabel(getChannelInfo(channelId));
 }
 
-/**
- * Vencord fills the store exports in asynchronously, so the binding must be read inside the call.
- * Caching it at module level would capture undefined forever.
- */
+/** Vencord fills the store exports later, so the binding is read inside the call. */
 const voiceStore = () => VoiceStateStore as any;
 
-/**
- * getVoiceStatesForChannel is the backbone of this plugin. If a Discord update ever renames it,
- * fall back to scanning all voice states instead of silently showing an empty list.
- */
 function voiceStatesForChannel(channelId: string): Record<string, any> {
     const store = voiceStore();
 
@@ -105,13 +94,6 @@ function voiceStatesForChannel(channelId: string): Record<string, any> {
     return states;
 }
 
-/**
- * Everybody's voice state in one map, for the day getVoiceStateForUser is not there any more.
- *
- * Flattening every server is far too much work to do per row, and this is asked once per row per
- * redraw, so the answer is held for the length of one render pass exactly like the channel info
- * below. It is only ever built on the fallback path, so an intact Discord never pays for it.
- */
 const ALL_STATES_TTL_MS = 200;
 const allStatesCache = new TtlCache<Map<string, any>>(ALL_STATES_TTL_MS, 1);
 
@@ -131,7 +113,6 @@ function allVoiceStatesByUser(): Map<string, any> {
     return allStatesCache.set("all", states);
 }
 
-/** Where one person is, with the same two ways of answering that a channel's members have. */
 export function voiceStateForUser(userId: string): any | null {
     const store = voiceStore();
 
@@ -143,7 +124,6 @@ export function voiceStateForUser(userId: string): any | null {
     return allVoiceStatesByUser().get(userId) ?? null;
 }
 
-/** "Who is in which channel" across every guild we know about, used to prime the tracker. */
 export function getVoiceSnapshot(): Map<string, string> {
     const snapshot = new Map<string, string>();
     const all = voiceStore()?.getAllVoiceStates?.();
@@ -165,7 +145,6 @@ export function getVoiceInfo(userId: string): VoiceInfo | null {
     return getChannelInfo(state.channelId, state);
 }
 
-/** DMs and group calls have no overwrites. Everything else is checked against your roles. */
 export function getChannelAccess(channel: any): { canView: boolean; canJoin: boolean; } {
     if (!channel) return { canView: false, canJoin: false };
     if (channel.type === 1 || channel.type === 3) return { canView: true, canJoin: true };
@@ -181,7 +160,6 @@ export function getChannelAccess(channel: any): { canView: boolean; canJoin: boo
     }
 }
 
-/** A full channel refuses the connection, unless you can move members. */
 export function isChannelFull(channel: any, memberCount: number): boolean {
     const limit = Number(channel?.userLimit) || 0;
     if (limit <= 0 || memberCount < limit) return false;
@@ -189,17 +167,13 @@ export function isChannelFull(channel: any, memberCount: number): boolean {
     try {
         return !PermissionStore.can(PermissionsBits.MOVE_MEMBERS, channel);
     } catch {
-        return true;
+        // If the check breaks, treat the channel as open and let the server decide.
+        return false;
     }
 }
 
-/**
- * Rows in the same channel would each redo the permission checks and the member scan. A very short
- * cache collapses one render pass into a single lookup per channel. At a 100 person limit that is the
- * difference between hundreds of permission checks per redraw and a handful.
- */
+/** A short cache so rows in the same channel share one lookup. */
 const CHANNEL_INFO_TTL_MS = 200;
-/** Far more channels than one render pass can touch, so the ceiling never costs a real lookup. */
 const CHANNEL_INFO_MAX_ENTRIES = 200;
 const channelInfoCache = new TtlCache<VoiceInfo>(CHANNEL_INFO_TTL_MS, CHANNEL_INFO_MAX_ENTRIES);
 
@@ -210,7 +184,6 @@ function baseChannelInfo(channelId: string): VoiceInfo {
 export function getChannelInfo(channelId: string, state?: any): VoiceInfo {
     const base = baseChannelInfo(channelId);
 
-    // per-person flags are never cached, they change with every mute click
     return state
         ? {
             ...base,
@@ -222,11 +195,16 @@ export function getChannelInfo(channelId: string, state?: any): VoiceInfo {
         : base;
 }
 
-/** Channel-wide facts only. Per-person voice flags are layered on top by getChannelInfo. */
 function buildChannelInfo(channelId: string): VoiceInfo {
     const channel = ChannelStore.getChannel(channelId) as any;
     const guildId = channel?.guild_id ?? null;
-    const guild = guildId ? GuildStore.getGuild(guildId) : null;
+    const guild = guildId ? (() => {
+        try {
+            return GuildStore?.getGuild?.(guildId) ?? null;
+        } catch {
+            return null;
+        }
+    })() : null;
     const memberStates = voiceStatesForChannel(channelId);
     const participantIds = Object.keys(memberStates);
     const { canView, canJoin } = getChannelAccess(channel);
@@ -249,7 +227,6 @@ function buildChannelInfo(channelId: string): VoiceInfo {
     };
 }
 
-/** Opens the channel in Discord, the sidebar and chat view. Does NOT connect to it. */
 export function openChannel(channelId: string): void {
     try {
         (ChannelRouter as any).transitionToChannel(channelId);
@@ -264,10 +241,6 @@ export function getChannelParticipantIds(channelId: string): string[] {
     return Object.keys(voiceStatesForChannel(channelId));
 }
 
-/**
- * How much of Discord's voice picture the client is actually holding. A number well under your server
- * count is the shape of the problem the subscriptions exist to fix, so it is worth showing.
- */
 export function getVoiceCoverage(): { guilds: number; states: number; } {
     let guilds = 0;
     let states = 0;
@@ -283,13 +256,11 @@ export function getVoiceCoverage(): { guilds: number; states: number; } {
             states += count;
         }
     } catch {
-        /* nothing to report, which the caller shows as zero */
     }
 
     return { guilds, states };
 }
 
-/** Short-lived by design, but there is no reason to keep them alive past the plugin either. */
 export function resetChannelCaches(): void {
     channelInfoCache.clear();
     allStatesCache.clear();
@@ -299,7 +270,6 @@ export function channelProblems(): ApiHealth {
     const store = voiceStore();
 
     return new HealthReport()
-        // either way of answering will do, since both of these fall back to the whole-store scan
         .vital(
             () => isFn(store?.getVoiceStateForUser) || isFn(store?.getAllVoiceStates),
             T.apiWhoIsInVoice
@@ -309,9 +279,6 @@ export function channelProblems(): ApiHealth {
             T.apiChannelMembers
         )
         .vital(() => isFn(SelectedChannelStore?.getVoiceChannelId), T.apiMyChannel)
-        // without this one nothing reads as broken, it just quietly turns every channel into
-        // "unknown" and every row into a locked one, which looks like the plugin deciding you have
-        // no access
         .vital(() => isFn((ChannelStore as any)?.getChannel), T.apiChannelInfo)
         .nice(() => isFn((ChannelRouter as any)?.transitionToChannel), T.apiOpenChannel)
         .nice(() => isFn((PermissionStore as any)?.can), T.apiPermissions);

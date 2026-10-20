@@ -19,16 +19,13 @@
 import type { Messages } from "./en";
 import { pluralRu } from "./plural";
 
-/**
- * A Discord display name carries no grammatical gender, so anything written about a person is phrased
- * so it does not need one. "Возврат в канал, Имя" instead of "Имя возвращён" or "возвращена".
- */
+/** Display names have no grammatical gender, so text about a person avoids gendered words. */
 const people = (count: number) => pluralRu(count, "человек", "человека", "человек");
 const slots = (count: number) => pluralRu(count, "свободный слот", "свободных слота", "свободных слотов");
 
 export const ru: Messages = {
     /* ── карточка плагина ────────────────────────────────────────────────────────────────── */
-    pluginDescription: "Радар голосовых каналов. Недавние и закреплённые люди с живой информацией о голосе, быстрый и тихий вход, автоследование и уведомления о заходе. GitHub https://github.com/MrTopQ/VoiceRadar-Discord",
+    pluginDescription: "Радар голосовых каналов. Недавние и закреплённые люди с живой информацией о голосе, быстрый вход, автоследование и уведомления о заходе. GitHub https://github.com/MrTopQ/VoiceRadar-Discord",
 
     /* ── настройки ───────────────────────────────────────────────────────────────────────── */
     settingLanguage: "Язык текстов самого плагина. «Авто» повторяет язык интерфейса Discord",
@@ -36,8 +33,7 @@ export const ru: Messages = {
     settingHistoryLimit: "Сколько человек хранит список (закреплённые тоже занимают слоты)",
     settingHotkey: "Горячая клавиша, открывающая Voice Radar (например, Alt+2, Ctrl+Shift+V)",
     settingHotkeyInvalid: "Нужна собственная клавиша, а не только модификаторы. Например, Alt+2 или Ctrl+Shift+V",
-    settingSilentJoin: "Тихий вход. Выключает микрофон при любом входе, который плагин делает за вас, будь то быстрый переход, автозаход или занятый слот из очереди",
-    settingAutoJoinEnabled: "Главный выключатель автозахода. Когда ваша цель заходит в голосовой канал, вас затягивает следом. Цель может быть только одна, и, назначив нового человека, вы выключаете предыдущего",
+    settingSilentJoin: "Выключать микрофон при автовходе. Действует при любом входе, который плагин делает за вас: быстрый переход, автозаход или занятый слот из очереди",
     settingAutoJoinOnlyWhenIdle: "Следовать за целью автозахода, только когда вы сами не в голосовом канале (никогда не выдёргивает вас из текущего разговора)",
     settingAutoJoinCooldown: "Пауза между автозаходами, в секундах. Ноль означает максимально быстро",
     settingNotifyStyle: "Как показывать уведомления о заходе в голосовой",
@@ -117,7 +113,7 @@ export const ru: Messages = {
     healthPresenceOk: "Кружок статуса и значки устройств приходят прямо от Discord.",
     healthJoinTitle: "Вход в канал",
     healthJoinOk: "Кнопка входа, автозаход и очередь на место в заполненном канале идут через это.",
-    healthSilentJoinTitle: "Тихий вход",
+    healthSilentJoinTitle: "Выключать микрофон при автовходе",
     healthSilentJoinOk: "Микрофон выключается на каждом входе, который плагин делает за вас.",
     healthOpenChannelTitle: "Переход в канал по чипу",
     healthOpenChannelOk: "Клик по чипу канала переводит Discord в него, не подключая вас.",
@@ -127,6 +123,8 @@ export const ru: Messages = {
     healthStreamsOk: "Значок LIVE, картинка по наведению и крупная по клику.",
     healthModerationTitle: "Действия модератора",
     healthModerationOk: "Перенос человека к себе, возврат обратно и магнит.",
+    healthStickyMuteTitle: "Несъёмный мут",
+    healthStickyMuteOk: "Серверный мут, который плагин выдаёт снова, как только его сняли или человек перезашёл.",
     healthWindowTitle: "Окно радара",
     healthWindowOk: "Открывается горячей клавишей, из любого правого клика и с панели аккаунта.",
     healthPanelButtonTitle: "Кнопка на панели аккаунта",
@@ -181,20 +179,69 @@ export const ru: Messages = {
     /* ── окно радара ─────────────────────────────────────────────────────────────────────── */
     searchPlaceholder: "Поиск людей…",
     pressKeys: "нажмите клавиши…",
-    hotkeyChip: (combo: string) => `клавиша ${combo}`,
+    hotkeyLabel: "Клавиша",
+    settingsButton: "Настройки",
+    settingsUnavailable: "Не удалось открыть настройки плагина, откройте их через Vencord, вкладка «Плагины»",
+    hotkeyHint: "Нажмите, затем новое сочетание. Esc оставит как было",
+    searchClear: "Очистить поиск",
+    closeWindow: "Закрыть",
+    windowCrashed: "Окно Voice Radar наткнулось на ошибку и закрылось. Подробности в консоли (Ctrl+Shift+I)",
+    filterLabel: "Кого показывать",
+    filterAll: "Все",
+    filterLive: "В голосовом",
     hotkeySaved: (combo: string) => `Горячая клавиша Voice Radar теперь ${combo}`,
     globalHotkeyNeedsRestart: "Глобальная клавиша заработает только после полного перезапуска Discord, перезагрузки окна мало. Выйдите из него через трей и запустите заново.",
     globalHotkeyTaken: (combo: string) =>
         `${combo} уже занята другой программой, поэтому работает только когда Discord в фокусе.`,
-    chipSilentJoinOn: "🔇 тихий вход вкл",
-    chipSilentJoinOff: "🎙 тихий вход выкл",
-    chipLiveOnlyOn: "🟢 только в голосе",
-    chipLiveOnlyOff: "⚪ все",
-    chipAutoJoinDisabled: (name: string | null) => `🎯 автозаход выкл${name ? ` (${name})` : ""}`,
-    chipAutoJoinTarget: (name: string) => `🎯 автозаход за ${name}`,
-    chipAutoJoinNobody: "🎯 автозаход ни за кем",
-    chipSendBack: (count: number) => `↩ вернуть ${count}`,
-    chipWaitingForSlot: (channel: string) => `⏳ ждём слот в ${channel} ✕`,
+    infoButton: "история",
+    infoWindowLabel: "Где человека видели",
+    infoButtonHint: "Где человека видели и когда",
+    infoWithYou: "Последний раз с вами",
+    infoWithYouNever: "ни разу не сидели вместе",
+    infoWeek: "За неделю",
+    infoStatus: "Статус",
+    infoStatusUnknown: "Discord не сообщил",
+    infoLogTitle: (count: number) => `Журнал, ${count} ${pluralRu(count, "запись", "записи", "записей")}`,
+    infoLogEmpty: "Пока пусто. С этого момента сюда попадает каждый заход, переход и выход.",
+    infoKindJoined: "Вход",
+    infoKindMoved: "Переход",
+    infoKindLeft: "Выход",
+    infoCreated: "Аккаунт создан",
+    infoBot: "БОТ",
+    infoFriend: "В друзьях",
+    infoFriendBlocked: "в чёрном списке",
+    infoMutualTitle: "Общие серверы",
+    infoAndMore: (count: number) => ` и ещё ${count}`,
+    infoJoinedGuild: "Участник сервера, где сидит сейчас",
+    infoJoinedGuildSince: (date: string, age: string) => `с ${date}, ${age}`,
+    infoMutualPartial: "Discord прислал только часть списков участников, их может быть больше",
+    infoIdCopy: "Нажмите, чтобы скопировать",
+    infoIdCopied: "ID скопирован",
+    infoIdCopyFailed: "Не удалось скопировать ID",
+    infoYes: "да",
+    infoNo: "нет",
+    infoAgeYears: (count: number) => `${count} ${pluralRu(count, "год", "года", "лет")} назад`,
+    infoAgeMonths: (count: number) => `${count} ${pluralRu(count, "месяц", "месяца", "месяцев")} назад`,
+    infoAgeDays: (count: number) => count ? `${count} ${pluralRu(count, "день", "дня", "дней")} назад` : "сегодня",
+    infoLiveTitle: "Сейчас в голосовом",
+    infoLiveSince: (since: string) => `вход ${since}`,
+    infoLivePeople: (count: number) => `в канале ${count} ${pluralRu(count, "человек", "человека", "человек")}`,
+    infoOfflineTitle: "Сейчас не в голосовом",
+    infoOfflineLast: (channel: string) => `последний раз в ${channel}`,
+    infoAtLeast: (count: number) => `не меньше ${count}`,
+    infoWeekSub: "заходов и переходов",
+    infoToday: "Сегодня",
+    infoYesterday: "Вчера",
+    infoLogEmptyTitle: "Перемещений пока нет",
+    apiConfirm: "окно подтверждения (Alerts.show)",
+    confirmUnavailable: "Не удалось спросить подтверждение, обновление Discord сдвинуло это окно. Ничего не сделано",
+    followTitle: (name: string) => `Автозаход за ${name}`,
+    followWhere: (where: string) => `сейчас в ${where}`,
+    followNotInVoice: "сейчас не в голосовом, вы пойдёте следом, как только человек зайдёт",
+    followRemove: "Снять",
+    silentJoinLabel: "Выключать микрофон при автовходе",
+    chipSendBack: (count: number) => `Вернуть ${count}`,
+    chipWaitingForSlot: (channel: string) => `Ждём слот в ${channel}`,
 
     modalSubtitle: (pinned: number, recent: number, total: number, limit: number) =>
         `закреплено ${pinned}, недавних ${recent}, ${total}/${limit}${total > limit ? ", сверх лимита" : ""}`,
@@ -226,13 +273,15 @@ export const ru: Messages = {
     sectionRecentHint: (free: number) => `${free} ${slots(free)}`,
 
     /* ── строка человека ─────────────────────────────────────────────────────────────────── */
-    badgePinned: "ЗАКРЕП",
     badgeAuto: "АВТО",
+    badgeMuted: "МУТ",
     badgeWithYou: "С ВАМИ",
     badgeLive: "LIVE",
 
     notInVoice: "Не в голосовом",
     lastChannel: (channel: string) => `, последний ${channel}`,
+    leftAgo: (when: string, channel: string | null) =>
+        channel ? `Не в голосовом, выход ${when} из ${channel}` : `Не в голосовом, выход ${when}`,
     seenAgo: (when: string) => `виделись ${when}`,
     addedAgo: (when: string) => `добавлен ${when}`,
 
@@ -254,6 +303,12 @@ export const ru: Messages = {
     magnetIdleTargetOffline: "Магнит включён и ждёт, человека пока нет в голосовом канале",
     magnetActive: "Магнит включён, при любом уходе человека возвращает к вам",
 
+    stickyMuteOff: "Несъёмный мут. Плагин выдаёт серверный мут и выдаёт его снова каждый раз, когда мут снимут или человек перезайдёт, на любом сервере, где у вас есть право мутить. Держится, пока вы не выключите эту кнопку",
+    stickyMuteOn: "Несъёмный мут включён на всех серверах, где вы можете мутить. Сняли мут или человек перезашёл, плагин сразу мутит снова. Нажмите, чтобы выключить",
+    stickyMuteNoPermissionHere: "Несъёмный мут включён, но здесь у вас нет права отключать участникам звук, поэтому мут не выдаётся. Нажмите, чтобы выключить",
+    stickyMuteLimitReached: (max: number) => `Несъёмный мут уже у ${max} из ${max} человек, это максимум. Снимите его с кого-нибудь, чтобы включить здесь`,
+    stickyMuteWaiting: "Несъёмный мут включён и ждёт, человека нет в голосовом. Как только зайдёт, сразу получит мут",
+
     joinNotInVoice: "Не в голосовом канале",
     joinAlreadyThere: "Вы уже там",
     joinNoPermission: "Нет прав на вход в этот канал",
@@ -270,7 +325,6 @@ export const ru: Messages = {
     notifyOn: "Уведомления включены",
     notifyOff: "Уведомлять, когда зайдёт в голосовой",
     autoJoinOn: "Автозаход включён (клик выключает)",
-    autoJoinOnButDisabled: "Цель назначена, но главный выключатель автозахода выключен, поэтому никто ни за кем не идёт. Включите его в панели радара",
     autoJoinOff: "Автозаход за этим человеком. Цель может быть только одна, предыдущая выключится",
     removeFromList: "Убрать из списка",
 
@@ -278,13 +332,15 @@ export const ru: Messages = {
     alreadyWithUser: (name: string) => `Вы уже вместе с ${name}`,
     magnetOffFor: (name: string) => `Магнит выключен для ${name}`,
     magnetOnFor: (name: string) => `Теперь удерживаем в вашем канале ${name}`,
+    stickyMuteOnFor: (name: string) => `${name} в несъёмном муте, пока вы его не выключите`,
+    stickyMuteOffFor: (name: string) => `Несъёмный мут снят с ${name}`,
+    stickyMuteRestored: (name: string) => `${name} снова в муте`,
+    stickyMuteNoPermission: (name: string) => `Нет права отключать звук, ${name} в муте не удержать`,
     magnetGaveUp: (name: string) => `Магнит снят, ${name} уходит быстрее, чем возвращается`,
     magnetOffNoPermission: (name: string) => `Магнит снят, ${name} сюда не переместить, повторять бессмысленно`,
     magnetCoolingDown: (name: string, seconds: number) =>
         `Магнит на ${name} только что сдался, повесить снова можно через ${seconds} с`,
     autoJoinTargetSet: (name: string) => `Цель автозахода теперь ${name}`,
-    autoJoinTargetSetButOff: (name: string) =>
-        `Цель автозахода теперь ${name}, но сам автозаход выключен, включите его в панели радара`,
     autoJoinCleared: "Автозаход выключен",
 
     /* ── кнопка на панели аккаунта ───────────────────────────────────────────────────────── */
@@ -334,6 +390,7 @@ export const ru: Messages = {
     menuPullChannel: (channel: string) => `Перетащить ко мне всех из ${channel}`,
     menuSendBatchBack: (count: number) => `↩ Вернуть ${count} по своим каналам`,
     menuMagnet: "Магнит, удерживать в моём канале",
+    menuStickyMute: "Несъёмный мут, возвращается, пока вы его не выключите",
     menuTrackChannel: (count: number) => `Добавить в радар всех отсюда (${count})`,
     menuPullEveryoneHere: "Перетащить всех отсюда в мой канал",
 
@@ -369,7 +426,6 @@ export const ru: Messages = {
     /* ── уведомления трекера ─────────────────────────────────────────────────────────────── */
     someone: "Кто-то",
     notifyToast: (name: string, channel: string) => `🔊 ${name} → ${channel}`,
-    // no gendered verb, because a Discord display name does not carry one. See the note at the top
     notifyTitle: (name: string) => `${name} в голосовом канале`,
     notifyBatchTitle: (count: number) =>
         `${count} ${people(count)} ${pluralRu(count, "зашёл", "зашли", "зашли")} в голосовые`,
@@ -449,10 +505,12 @@ export const ru: Messages = {
     apiUserInfo: "имена и аватары (UserStore.getUser)",
     apiStatuses: "статусы (PresenceStore.getStatus)",
     apiJoinChannel: "вход в каналы (selectVoiceChannel)",
-    apiSilentJoin: "тихий вход (setSelfMute и toggleSelfMute, в крайнем случае dispatch)",
+    apiSilentJoin: "выключение микрофона при автовходе (setSelfMute и toggleSelfMute, в крайнем случае dispatch)",
     apiToasts: "всплывающие сообщения самого плагина",
     apiDevices: "с какого устройства человек в сети (PresenceStore.getClientStatus)",
-    apiWindow: "само окно (Modal), радар нельзя открыть",
+    apiUserMenu: "меню Discord по правому клику на человеке (UserGenericContextMenu, GuildChannelUserContextMenu)",
+    userMenuUnavailable: "Не удалось открыть меню Discord для этого человека, обновление его сдвинуло. Остальное работает",
+    apiWindow: "само окно (createRoot, а запасным путём Modal), радар нельзя открыть",
     apiPanelButton: "кнопка на панели аккаунта (ищется по коду Discord)",
     apiPanelButtonPatch: "место для кнопки на панели аккаунта, куда патч не встал, поэтому кнопке там взяться неоткуда. Окно по-прежнему открывается горячей клавишей и из любого правого клика",
     apiGuildSubscriptions: "запрос голосовых состояний у серверов (GuildSubscriptionsStore), люди в неоткрытых серверах остаются невидимыми",
@@ -463,6 +521,7 @@ export const ru: Messages = {
     apiPermissions: "проверка прав (PermissionStore.can)",
     apiModeratorActions: "действия модератора (RestAPI.patch)",
     apiMoveMembersFlag: "флаг права Move Members",
+    apiMuteMembersFlag: "флаг права Mute Members",
     apiVoiceEvents: "оповещения о том, что кто-то переместился (FluxDispatcher.subscribe), без них список не пополняется и ничего не объявляется",
 
     /* ── относительное время ─────────────────────────────────────────────────────────────── */

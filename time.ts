@@ -18,7 +18,6 @@
 
 import { T } from "./i18n";
 
-/** "just now", "5 minutes ago", and so on up to weeks, which is as far as this list ever reaches. */
 export function formatRelativeTime(timestamp: number): string {
     const diff = Date.now() - timestamp;
     if (diff < 60_000) return T.timeJustNow;

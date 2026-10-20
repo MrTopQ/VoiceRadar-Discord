@@ -16,21 +16,13 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-/**
- * Lives in its own module so a dictionary can use it without importing the i18n runtime, which
- * imports the dictionaries back.
- */
+/** Separate from i18n, which imports the dictionaries back. */
 
-/** English, one or other. */
 export function pluralEn(count: number, one: string, other: string): string {
     return count === 1 ? one : other;
 }
 
-/**
- * Russian has three forms and they do not follow the count alone. 21 takes the same form as 1, and 11
- * does not. Intl knows the rule, and the hand written branch is the fallback for a runtime that has no
- * plural rules for ru, which has not been seen in practice.
- */
+/** Russian has three forms, and 21 takes the form of 1 while 11 does not. */
 const ruRules = (() => {
     try {
         return new Intl.PluralRules("ru-RU");

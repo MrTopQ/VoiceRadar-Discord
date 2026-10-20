@@ -28,10 +28,6 @@ import { getMovePace } from "./settings";
 import { clearAutoPull, getAutoPullTarget } from "./store";
 import { toast, ToastType } from "./toast";
 
-/**
- * Where each person sat before you pulled them over. Kept in memory only, because undoing a move
- * makes sense while they are still sitting with you and no longer.
- */
 const cameFrom = new Map<string, { from: string; to: string; }>();
 
 export interface ReturnTarget {
@@ -39,19 +35,10 @@ export interface ReturnTarget {
     name: string;
 }
 
-/** Written the moment a move lands, one by one, so a half finished run is still undoable. */
 export function rememberMove(userId: string, from: string, to: string) {
     cameFrom.set(userId, { from, to });
 }
 
-/**
- * The channel to send them back to, or null when there is nothing to undo. An undo only makes sense
- * while they are still sitting with you, since chasing someone who walked off would not be an undo.
- *
- * Deliberately read-only. It is called from render, for the button, its tooltip and the menu, and
- * dropping records here made rendering mutate state. Stale records are pruned by pruneMoveHistory,
- * from the voice events that are the reason they go stale.
- */
 export function getReturnChannel(userId: string): ReturnTarget | null {
     const record = cameFrom.get(userId);
     if (!record) return null;
@@ -59,32 +46,22 @@ export function getReturnChannel(userId: string): ReturnTarget | null {
     const voice = getVoiceInfo(userId);
     if (!voice || voice.channelId !== record.to || voice.channelId !== getMyChannelId()) return null;
 
-    // canMoveUser covers where they sit now, with you. Sending them back also needs the permission
-    // in the channel they came from, which is the destination this time
     const channel = ChannelStore.getChannel(record.from) as any;
     if (!channel || !canMoveUser(userId) || moveAccessForChannel(record.from) === "no") return null;
 
     return { channelId: record.from, name: getChannelName(channel) };
 }
 
-/** Forgets whoever can no longer be sent back. Safe at any time, since reads are filtered. */
 export function pruneMoveHistory() {
     for (const userId of [...cameFrom.keys()]) {
         if (!getReturnChannel(userId)) cameFrom.delete(userId);
     }
 }
 
-/**
- * Sending somebody back and magnetising them are opposite instructions, and the magnet used to win.
- * The move landed, the voice state came back, the magnet dragged them in again, and the button looked
- * broken. A click is the newer instruction, so it releases the magnet, before the request, so the
- * voice update the move causes cannot arrive first and undo it.
- */
 function releaseMagnet(userId: string) {
     if (getAutoPullTarget()?.id === userId) clearAutoPull();
 }
 
-/** A full channel is no obstacle here. Moving members is the permission that ignores it. */
 export async function sendUserBack(userId: string) {
     if (isRepeatClick("back", userId)) return;
 
@@ -106,10 +83,6 @@ export async function sendUserBack(userId: string) {
     toast(T.sentUserBack(name, target.name), ToastType.SUCCESS);
 }
 
-/**
- * Everyone you pulled over who is still sitting with you, one by one or in a group. Whoever has since
- * wandered off is filtered out rather than deleted. See getReturnChannel.
- */
 export function getReturnableBatch(): string[] {
     return [...cameFrom.keys()].filter(id => getReturnChannel(id) !== null);
 }
@@ -161,7 +134,6 @@ export async function sendBatchBack() {
     );
 }
 
-/** Everything the undo remembers between actions. Dropped when the plugin stops. */
 export function forgetMoveHistory() {
     cameFrom.clear();
 }

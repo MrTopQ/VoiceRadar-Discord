@@ -59,12 +59,11 @@ export function formatHotkey(hotkey: Hotkey | null): string {
     return parts.join("+");
 }
 
-/** Builds a hotkey string from a keyboard event. Used by the recorder in the window. */
 export function hotkeyFromEvent(event: KeyboardEvent): string | null {
     const key = event.key?.toLowerCase();
     if (!key || MODIFIER_KEYS.has(key)) return null;
 
-    // Alt plus a letter gives exotic characters on some layouts, so prefer the physical code
+    // Alt plus a letter types other characters on some layouts, so the physical key code is used.
     const code = event.code?.toLowerCase() ?? "";
     const named = code.startsWith("key") ? code.slice(3)
         : code.startsWith("digit") ? code.slice(5)
@@ -105,17 +104,7 @@ function matches(event: KeyboardEvent, hotkey: Hotkey): boolean {
 let handler: ((event: KeyboardEvent) => void) | null = null;
 let captureActive = false;
 
-/**
- * The parsed combination, kept rather than worked out again for every key.
- *
- * The listener below sits on the window in the capture phase, so it runs on every keystroke in
- * Discord, including each letter of a message being typed, and it used to read the settings proxy
- * and split, map, filter and allocate before comparing anything at all. Parsing is cheap and doing
- * it thousands of times an evening is not, in the one place that is on the path of every key press.
- *
- * The stored string is still what decides. This is only cached against it, so a combination changed
- * anywhere at all is picked up on the next key without anybody having to remember to clear it.
- */
+/** Cached, because this runs on every key press. */
 let parsedFrom: string | null = null;
 let parsedHotkey: Hotkey | null = null;
 
@@ -128,9 +117,14 @@ function currentHotkey(): Hotkey | null {
     return parsedHotkey;
 }
 
-/** While the recorder is listening, the global hotkey stays out of the way. */
 export function setHotkeyCaptureActive(active: boolean) {
     captureActive = active;
+}
+
+export const isHotkeyCaptureActive = () => captureActive;
+
+export function isTypingKey(event: Pick<KeyboardEvent, "key" | "ctrlKey" | "metaKey" | "altKey">): boolean {
+    return event.key.length === 1 && event.key !== " " && !event.ctrlKey && !event.metaKey && !event.altKey;
 }
 
 export function registerHotkey(onTrigger: () => void) {

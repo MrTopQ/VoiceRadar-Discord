@@ -19,12 +19,6 @@
 import { definePluginSettings } from "@api/Settings";
 import { makeRange, OptionType } from "@utils/types";
 
-/*
- * hotkey.ts imports this file back, which is a cycle on paper and not one in practice. Neither side
- * touches the other while the modules are being evaluated, and parseHotkey is a plain declaration.
- * The alternative was a second copy of the parsing rule here, and two rules that can drift apart is
- * the worse of the two problems.
- */
 import { parseHotkey } from "./hotkey";
 import { AUTO_LANGUAGE, LANGUAGE_CODES, LANGUAGE_LABELS, T } from "./i18n";
 import type { BatchPace } from "./moveBatch";
@@ -49,23 +43,11 @@ export const DEFAULT_JOIN_SOUND = CHIME_SOUND;
 export const JOIN_SOUNDS = ["off", CHIME_SOUND, "user_join", "message1"];
 export const DEFAULT_JOIN_SOUND_VOLUME = 60;
 
-/**
- * How many servers may be asked to keep sending voice states.
- *
- * The servers your people were last seen in are asked first, so the limit only ever decides what
- * happens past them. Every one of these is a subscription the client would not otherwise hold, and
- * they are taken one at a time, over a second apart, so a high number costs a slow trickle after a
- * reconnect rather than a burst. Blindness is the thing worth avoiding, so the default is generous.
- */
 export const DEFAULT_WATCHED_SERVERS = 100;
 export const MIN_WATCHED_SERVERS = 10;
 export const MAX_WATCHED_SERVERS = 200;
 
-/**
- * Descriptions and option labels are getters on purpose. Vencord keeps this object by reference and
- * reads the fields while rendering, so a getter runs after the locale store exists, and again right
- * after you pick another language. That is what makes the panel translate itself without a restart.
- */
+/** Descriptions are getters so they follow the language. */
 export const settings = definePluginSettings({
     language: {
         type: OptionType.SELECT,
@@ -94,20 +76,7 @@ export const settings = definePluginSettings({
             return T.settingHotkey;
         },
         default: DEFAULT_HOTKEY,
-        /*
-         * A combination with no key in it can never fire, and half of one is what this field holds
-         * for most of the time somebody is typing into it. Saying so under the field beats storing
-         * it and leaving the hotkey quietly dead.
-         */
         isValid: (value: string) => (parseHotkey(value) ? true : T.settingHotkeyInvalid),
-        /*
-         * The listener inside Discord reads the stored string on every key, so it needs no telling.
-         * The system wide claim is the opposite, it was handed one combination and holds it until
-         * somebody takes it back. The recorder in the window already does this, and typing a new
-         * combination straight into the field here used to leave the machine answering the old one.
-         *
-         * Deferred, because this field answers on every keystroke. See scheduleGlobalHotkeySync.
-         */
         onChange: () => void import("./globalHotkey").then(module => module.scheduleGlobalHotkeySync())
     },
     silentJoin: {
@@ -116,13 +85,6 @@ export const settings = definePluginSettings({
             return T.settingSilentJoin;
         },
         default: false
-    },
-    autoJoinEnabled: {
-        type: OptionType.BOOLEAN,
-        get description() {
-            return T.settingAutoJoinEnabled;
-        },
-        default: true
     },
     autoJoinOnlyWhenIdle: {
         type: OptionType.BOOLEAN,
@@ -188,11 +150,6 @@ export const settings = definePluginSettings({
         },
         default: true
     },
-    /**
-     * The one setting whose right answer depends on the account rather than on taste. Discord only
-     * holds voice states for servers the client is subscribed to, so a server outside this number is
-     * one the plugin is blind to until you open it.
-     */
     watchedServerLimit: {
         type: OptionType.SLIDER,
         get description() {
@@ -202,15 +159,6 @@ export const settings = definePluginSettings({
         default: DEFAULT_WATCHED_SERVERS,
         stickToMarkers: false
     },
-    /**
-     * On by default, because without it a notification meant to arrive in three seconds arrives in
-     * five minutes, which is most of the point of the plugin while Discord sits in the tray.
-     *
-     * Worth being able to switch off all the same. It is the one thing here that reaches past the
-     * plugin and changes the whole renderer, so while you are in a game every timer in Discord keeps
-     * running at full speed rather than being slowed the way Chromium would slow them, and that is
-     * work the machine does while something else wants the processor.
-     */
     keepTimersAwake: {
         type: OptionType.BOOLEAN,
         get description() {
@@ -247,10 +195,6 @@ export const settings = definePluginSettings({
         default: true,
         restartNeeded: true
     },
-    /**
-     * Off by default on purpose. It takes the combination away from every other program on the
-     * machine, which is exactly the point and exactly the reason not to do it behind your back.
-     */
     globalHotkey: {
         type: OptionType.BOOLEAN,
         get description() {
@@ -289,24 +233,9 @@ export function getHistoryLimit(): number {
     return Math.min(MAX_HISTORY_LIMIT, Math.max(MIN_HISTORY_LIMIT, Math.floor(raw)));
 }
 
-/**
- * Switching voice channels is a gateway event and the gateway counts them, so even "0 seconds" keeps
- * a floor. Following someone who hops every 300ms would otherwise pile up events until Discord drops
- * the connection.
- *
- * Two seconds rather than the fraction of one it used to be. The connection itself takes about that
- * long, so nothing waits on this in practice, and a client that answers somebody else's hop inside a
- * few hundred milliseconds, over and over, is not doing anything a person at a keyboard does.
- */
+/** Switching channels is a gateway event, so even 0 seconds keeps a floor. */
 const MIN_AUTO_JOIN_GAP_MS = 2000;
 
-/**
- * The ceiling, because this is the one setting you type rather than drag.
- *
- * A slider cannot be wrong by a factor of a hundred and a number field can. 500 meant to be 5 is an
- * eight minute cooldown, during which auto-join simply never happens and nothing anywhere says why.
- * Five minutes is longer than any deliberate use of this and short enough to notice.
- */
 const MAX_AUTO_JOIN_GAP_MS = 5 * 60_000;
 
 export function getAutoJoinCooldownMs(): number {

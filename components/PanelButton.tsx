@@ -20,7 +20,7 @@ import { findComponentByCodeLazy } from "@webpack";
 import { FluxDispatcher, Tooltip, useCallback, useEffect, useState } from "@webpack/common";
 import type { ReactNode } from "react";
 
-import { type ApiHealth, HealthReport, isResolvedComponent } from "../apiHealth";
+import { type ApiHealth, HealthReport, isFound } from "../apiHealth";
 import { channelLabel, getVoiceInfo } from "../channels";
 import { formatHotkey, parseHotkey } from "../hotkey";
 import { T } from "../i18n";
@@ -32,7 +32,6 @@ import { cl } from "./common";
 import { RadarIcon } from "./icons";
 import { openRadarModal } from "./RadarModal";
 
-// same component the account panel uses for the mic / headphones buttons
 const PanelButton = findComponentByCodeLazy(".GREEN,positionKeyStemOverride:");
 
 const TOOLTIP_MAX_USERS = 6;
@@ -80,18 +79,10 @@ function RadarIconWithBadge({ count }: { count: number; }) {
     );
 }
 
-/**
- * The account panel button is a Discord component found by matching mangled code, so it is among the
- * first things an update moves.
- *
- * It is reported as degraded rather than broken, because the button is a shortcut to a window that
- * still opens from the hotkey and from every right-click menu, and because the fallback below keeps
- * a working button on screen either way. The reader still deserves to know why it looks plain.
- */
 export function panelButtonProblems(): ApiHealth {
     if (!settings.store.showPanelButton) return new HealthReport();
 
-    return new HealthReport().nice(() => isResolvedComponent(PanelButton), T.apiPanelButton);
+    return new HealthReport().nice(() => isFound(PanelButton), T.apiPanelButton);
 }
 
 interface PanelButtonProps {
@@ -101,16 +92,8 @@ interface PanelButtonProps {
     plated: boolean;
 }
 
-/**
- * Discord's own panel button, or one of ours when a Discord update has taken theirs away.
- *
- * The patch that puts something into the account panel goes on matching an intl key, which is stable,
- * while the component beside the mic and headphones is found by matching minified code, which is not.
- * Losing the second used to mean the button vanished with the patch still in place. A plain button in
- * the same spot keeps the shortcut, and it is only ever seen on the day Discord moves things.
- */
 function PanelButtonOrFallback(props: PanelButtonProps) {
-    if (isResolvedComponent(PanelButton)) return <PanelButton {...props} />;
+    if (isFound(PanelButton)) return <PanelButton {...props} />;
 
     return (
         <Tooltip text={props.tooltipText}>
@@ -170,8 +153,6 @@ export function VoiceRadarPanelButton(props: { nameplate?: any; }) {
     const [live, setLive] = useState<LiveUser[]>([]);
 
     useEffect(() => {
-        // event driven instead of polling, because this button lives for the whole session. Voice
-        // events from every server arrive in bursts, so recomputing is throttled
         const update = throttle(() => setLive(previous => {
             const next = collectLiveUsers();
             return sameLiveUsers(previous, next) ? previous : next;
