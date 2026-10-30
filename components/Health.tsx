@@ -26,6 +26,8 @@ import { getHotkeyReach, getTimersState, isHotkeyReachSettled } from "../globalH
 import { getSubscriptionProgress, getSubscriptionStatus, isSubscriptionGuarded } from "../guildSubscriptions";
 import { formatHotkey, parseHotkey } from "../hotkey";
 import { T } from "../i18n";
+import { needsFullRestart } from "../mainProcess";
+import { askToRestartDiscord } from "../restart";
 import { ALERT_OFF, CUSTOM_SOUND, DEFAULT_HOTKEY, getJoinAlert, settings } from "../settings";
 import { getStoreState, getUsers } from "../store";
 import { formatRelativeTime } from "../time";
@@ -64,6 +66,19 @@ interface Row {
     title: string;
     detail: string;
     level: Level;
+    action?: { label: string; onClick: () => void; };
+}
+
+function mainProcessRow(): Row | null {
+    if (typeof IS_DISCORD_DESKTOP === "undefined" || !IS_DISCORD_DESKTOP) return null;
+
+    const missing = needsFullRestart();
+    return {
+        title: T.healthMainProcessTitle,
+        level: missing ? "pending" : "good",
+        detail: missing ? T.healthMainProcessMissing : T.healthMainProcessOk,
+        action: missing ? { label: T.restartButton, onClick: askToRestartDiscord } : undefined
+    };
 }
 
 function featureSection(): Row[] {
@@ -120,11 +135,14 @@ function environmentSection(): Row[] {
             : store === "loading" ? T.statusStoreLoading : T.statusListLostLine
     });
 
+    const mainProcess = mainProcessRow();
+    if (mainProcess) rows.push(mainProcess);
+
     const reach = getHotkeyReach();
     const combo = formatHotkey(parseHotkey(settings.store.hotkey || DEFAULT_HOTKEY));
     rows.push({
         title: T.healthHotkeyTitle,
-        level: isHotkeyReachSettled(reach) ? "good" : reach === "asking" ? "pending" : "waiting",
+        level: isHotkeyReachSettled(reach) ? "good" : reach === "asking" || reach === "needs-restart" ? "pending" : "waiting",
         detail: `${combo}. ${T.statusHotkey[reach]}`
     });
 
@@ -158,7 +176,7 @@ function environmentSection(): Row[] {
         title: T.healthTimersTitle,
         level: timers === "awake" || timers === "off"
             ? "good"
-            : timers === "refused" ? "bad" : timers === "asking" ? "pending" : "waiting",
+            : timers === "refused" ? "bad" : "pending",
         detail: T.healthTimers[timers]
     });
 
@@ -194,6 +212,11 @@ function Section({ title, rows }: { title: string; rows: Row[]; }) {
                     <div>
                         <div className={cl("health-name")}>{row.title}</div>
                         <div className={cl("health-detail")}>{row.detail}</div>
+                        {row.action && (
+                            <button className={cl("chip") + " " + cl("health-action")} onClick={row.action.onClick}>
+                                {row.action.label}
+                            </button>
+                        )}
                     </div>
                 </div>
             ))}

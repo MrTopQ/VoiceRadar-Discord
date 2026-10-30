@@ -16,16 +16,11 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-import type { PluginNative } from "@utils/types";
-
 import { formatHotkey, parseHotkey } from "./hotkey";
-import { PLUGIN_NAME, T } from "./i18n";
+import { T } from "./i18n";
+import { Native } from "./mainProcess";
 import { DEFAULT_HOTKEY, settings } from "./settings";
 import { toast, ToastType } from "./toast";
-
-const Native = (typeof VencordNative !== "undefined"
-    ? (VencordNative.pluginHelpers as any)?.[PLUGIN_NAME]
-    : undefined) as PluginNative<typeof import("./native")> | undefined;
 
 /** The main process calls the window through this. */
 const BRIDGE = "$VoiceRadarHotkey";

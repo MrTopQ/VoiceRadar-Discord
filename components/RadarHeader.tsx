@@ -21,6 +21,7 @@ import type { FeatureLevel } from "../features";
 import { getHotkeyReach, isHotkeyReachSettled } from "../globalHotkey";
 import { getSubscriptionProgress, getSubscriptionStatus } from "../guildSubscriptions";
 import { T } from "../i18n";
+import { needsFullRestart } from "../mainProcess";
 import { getStoreState } from "../store";
 import { formatRelativeTime } from "../time";
 import { cl } from "./common";
@@ -49,6 +50,8 @@ export function readState(): PluginState {
     }
 
     if (degraded.length) return { state: "waiting", label: T.statusDegraded(degraded.length) };
+
+    if (needsFullRestart()) return { state: "pending", label: T.statusNeedsRestart };
 
     const reach = getHotkeyReach();
     if (reach === "asking") return { state: "pending", label: T.statusLoading };

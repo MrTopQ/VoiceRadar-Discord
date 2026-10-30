@@ -16,16 +16,11 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-import type { PluginNative } from "@utils/types";
-
 import { type ApiHealth, HealthReport, isFn } from "./apiHealth";
-import { PLUGIN_NAME, T } from "./i18n";
+import { T } from "./i18n";
+import { Native, needsFullRestart } from "./mainProcess";
 import { DEFAULT_LOOKUP_URL, settings } from "./settings";
 import { toast, ToastType } from "./toast";
-
-const Native = (typeof VencordNative !== "undefined"
-    ? (VencordNative.pluginHelpers as any)?.[PLUGIN_NAME]
-    : undefined) as PluginNative<typeof import("./native")> | undefined;
 
 /** The first default, which the site read as a username and so showed somebody else. */
 const BROKEN_DEFAULT_URL = "https://discord-sensor.com/users/{id}";
@@ -34,9 +29,9 @@ export function migrateLookupUrl() {
     if (settings.store.lookupUrl === BROKEN_DEFAULT_URL) settings.store.lookupUrl = DEFAULT_LOOKUP_URL;
 }
 
-/** The window lives in Vencord's main process helper, which only loads on a full restart of Discord. */
+/** The window lives in Vencord's main process helper, and a helper still waiting for a full restart is not a break. */
 export function lookupProblems(): ApiHealth {
-    return new HealthReport().nice(() => isFn(Native?.openLookupWindow), T.apiLookupWindow);
+    return new HealthReport().nice(() => needsFullRestart() || isFn(Native?.openLookupWindow), T.apiLookupWindow);
 }
 
 export interface LookupLink {

@@ -18,6 +18,7 @@
 
 import { getApiHealth } from "./apiHealth";
 import { T } from "./i18n";
+import { needsFullRestart } from "./mainProcess";
 import { ALERT_OFF, CUSTOM_SOUND, getJoinAlert, settings } from "./settings";
 import { getStickyMuted } from "./store";
 
@@ -35,6 +36,8 @@ interface Feature {
     works: string;
     parts: string[];
     off?: () => boolean;
+    /** What the feature still waits for, which is not a break. */
+    pending?: () => string | null;
 }
 
 /** Read on every open, because the language can change while Discord runs. */
@@ -105,7 +108,8 @@ function features(): Feature[] {
             title: T.healthLookupTitle,
             works: T.healthLookupOk,
             parts: [T.apiLookupWindow],
-            off: () => !String(settings.store.lookupUrl ?? "").trim()
+            off: () => !String(settings.store.lookupUrl ?? "").trim(),
+            pending: () => needsFullRestart() ? T.healthLookupNeedsRestart : null
         },
         {
             title: T.healthPermissionsTitle,
@@ -175,6 +179,9 @@ export function featureRows(): FeatureRow[] {
         if (feature.off?.()) {
             return { title: feature.title, level: "good" as const, detail: T.healthFeatureOff };
         }
+
+        const waitingFor = feature.pending?.();
+        if (waitingFor) return { title: feature.title, level: "pending" as const, detail: waitingFor };
 
         const dead = feature.parts.filter(part => broken.includes(part));
         if (dead.length) {

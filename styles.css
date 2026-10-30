@@ -688,6 +688,30 @@
     background: color-mix(in srgb, var(--vr-red) 9%, transparent);
 }
 
+/* Something to do rather than something broken, so it stays out of the warning colours. */
+.vr-warning.vr-notice {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px 16px;
+    border-color: var(--vr-border-strong);
+    background: var(--vr-mod);
+}
+
+.vr-notice > span {
+    flex: 1 1 260px;
+}
+
+.vr-notice .vr-chip {
+    flex: 0 0 auto;
+}
+
+.vr-health-action {
+    height: 30px;
+    margin-top: 14px;
+}
+
 .vr-list-hint {
     padding: 0 20px 8px;
     font-size: 12px;

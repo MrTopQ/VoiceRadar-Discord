@@ -24,9 +24,11 @@ import { getVoiceInfo } from "../channels";
 import { subscribeToSubscriptionProgress } from "../guildSubscriptions";
 import { isHotkeyCaptureActive } from "../hotkey";
 import { T } from "../i18n";
+import { needsFullRestart } from "../mainProcess";
 import { getSearchText, normalizeSearch, warmUpUsers } from "../names";
 import { requestPresences } from "../presence";
 import { subscribeToQueue } from "../queue";
+import { askToRestartDiscord } from "../restart";
 import { getHistoryLimit } from "../settings";
 import { getVisibleUsers, pinnedPositionOf, refreshLimit, reorderPinned, subscribeToStore, TrackedUser } from "../store";
 import { throttle } from "../throttle";
@@ -237,6 +239,13 @@ function RadarWindow({ onClose, embedded = false }: { onClose: () => void; embed
 
             {health.degraded.length > 0 && (
                 <div className={cl("warning")}>{T.warnApiDegraded(health.degraded.join(", "))}</div>
+            )}
+
+            {needsFullRestart() && (
+                <div className={cl("warning") + " " + cl("notice")}>
+                    <span>{T.restartNotice}</span>
+                    <button className={cl("chip")} onClick={askToRestartDiscord}>{T.restartButton}</button>
+                </div>
             )}
 
             {(historyCapacity === 0 || total > limit) && (
