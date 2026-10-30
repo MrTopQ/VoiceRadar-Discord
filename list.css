@@ -215,11 +215,6 @@
     color: var(--vr-brand-text);
 }
 
-.vr-badge-muted {
-    background: color-mix(in srgb, var(--vr-red) 20%, transparent);
-    color: var(--vr-red-text);
-}
-
 .vr-badge-here {
     background: var(--vr-brand);
     color: #fff;
@@ -319,6 +314,36 @@
     text-align: center;
     color: var(--vr-text-muted);
     font-size: 14px;
+}
+
+/* People found in voice outside the list, under a line of their own. */
+.vr-found {
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--vr-border);
+}
+
+.vr-found-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 10px 2px;
+    color: var(--vr-text-muted);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.vr-found-note {
+    padding: 12px 2px;
+    color: var(--vr-text-muted);
+    font-size: 13px;
+}
+
+.vr-chip.vr-everywhere {
+    height: 38px;
+    border-radius: 11px;
 }
 
 .vr-empty {

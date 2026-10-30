@@ -23,7 +23,7 @@ import { TtlCache } from "./cache";
 import { getMyChannelId, getVoiceInfo } from "./channels";
 import { T } from "./i18n";
 import { settings } from "./settings";
-import { getAutoPullTarget, getTrackedUser } from "./store";
+import { getAutoPullTarget } from "./store";
 
 export function isModeratorMode(): boolean {
     return !!settings.store.moderatorMode;
@@ -94,55 +94,11 @@ export function canShowMagnet(userId: string): boolean {
     return voice?.guildId != null && moveAccessForChannel(voice.channelId) !== "no";
 }
 
-const muteCache = new TtlCache<MoveAccess>(ACCESS_TTL_MS, ACCESS_MAX_ENTRIES);
-
-function canAskAboutMuting(): boolean {
-    return probe(() => typeof (PermissionStore as any)?.can === "function"
-        && typeof PermissionsBits?.MUTE_MEMBERS === "bigint");
-}
-
-export function muteAccessForChannel(channelId: string): MoveAccess {
-    const cached = muteCache.get(channelId);
-    if (cached !== undefined) return cached;
-
-    const channel = ChannelStore.getChannel(channelId);
-    let access: MoveAccess;
-
-    if (!channel) access = "no";
-    else if (!canAskAboutMuting()) access = "unknown";
-    else {
-        try {
-            access = PermissionStore.can(PermissionsBits.MUTE_MEMBERS, channel) ? "yes" : "no";
-        } catch (error) {
-            console.warn("[VoiceRadar-Discord] mute permission check failed:", error);
-            access = "unknown";
-        }
-    }
-
-    return muteCache.set(channelId, access);
-}
-
-export function getMuteAccess(userId: string): MoveAccess {
-    if (!isModeratorMode()) return "no";
-
-    const voice = getVoiceInfo(userId);
-    if (!voice?.guildId) return "no";
-
-    return muteAccessForChannel(voice.channelId);
-}
-
-export function canShowStickyMute(userId: string): boolean {
-    if (getTrackedUser(userId)?.stickyMute) return true;
-    return getMuteAccess(userId) !== "no";
-}
-
 export function forgetMoveAccess(): void {
     accessCache.clear();
-    muteCache.clear();
 }
 
 export function movePermissionProblems(): ApiHealth {
     return new HealthReport()
-        .nice(() => typeof (PermissionsBits as any)?.MOVE_MEMBERS === "bigint", T.apiMoveMembersFlag)
-        .nice(() => typeof (PermissionsBits as any)?.MUTE_MEMBERS === "bigint", T.apiMuteMembersFlag);
+        .nice(() => typeof (PermissionsBits as any)?.MOVE_MEMBERS === "bigint", T.apiMoveMembersFlag);
 }

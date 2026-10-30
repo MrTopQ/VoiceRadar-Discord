@@ -43,7 +43,6 @@ import {
 } from "./selfMoves";
 import { getAutoJoinCooldownMs, settings } from "./settings";
 import { recordSighting } from "./sightings";
-import { watchVoiceState } from "./stickyMute";
 import {
     clearAutoJoin,
     getAutoJoinTarget,
@@ -463,8 +462,6 @@ function processVoiceStates({ voiceStates }: { voiceStates: VoiceState[]; }) {
 
         if (channelId) lastChannels.set(userId, channelId);
         else lastChannels.delete(userId);
-
-        if (userId !== me.id) watchVoiceState(userId, channelId);
 
         // Mute, deafen and video changes also land here.
         if (channelId === knownOld) continue;

@@ -27,7 +27,7 @@ import { T } from "../i18n";
 import { joinVoiceChannel } from "../join";
 import { canOpenModViewEverywhere, isModeratorIn } from "../modView";
 import { getReturnChannel, sendUserBack } from "../moveHistory";
-import { canShowMagnet, canShowStickyMute, getMoveAccess, muteAccessForChannel } from "../movePermissions";
+import { canShowMagnet, getMoveAccess } from "../movePermissions";
 import { DEFAULT_AVATAR_URL, getAvatarUrl, getUserDisplayName, openProfile } from "../names";
 import { getPresenceInfo } from "../presence";
 import { pullToMyChannel } from "../pull";
@@ -35,7 +35,6 @@ import { cancelQueue, isQueuedFor, queueForChannel } from "../queue";
 import { getRecentMarkMs, settings } from "../settings";
 import { getLastLeave, getRecentChange } from "../sightings";
 import { isSpeaking, watchSpeaking } from "../speaking";
-import { isStickyMuteLimitReached, MAX_STICKY_MUTED, toggleStickyMuteFor } from "../stickyMute";
 import { removeUser, toggleNotify, togglePin, type TrackedUser } from "../store";
 import { getStreamFor } from "../streams";
 import { formatRelativeTime } from "../time";
@@ -130,7 +129,7 @@ function ChannelTooltip({ voice }: { voice: VoiceInfo; }) {
     );
 }
 
-function ChannelChip({ voice }: { voice: VoiceInfo; }) {
+export function ChannelChip({ voice }: { voice: VoiceInfo; }) {
     const Icon = voice.canJoin && !voice.isFull ? SpeakerIcon : LockedSpeakerIcon;
 
     const onClick = (event: React.MouseEvent) => {
@@ -212,7 +211,7 @@ interface UserRowProps {
 
 /** What every row shows that does not belong to one person, worked out once per redraw. */
 export function rowSharedKey(): string {
-    return [getMyChannelId(), getMyGuildId(), settings.store.silentJoin, isStickyMuteLimitReached(), canOpenModViewEverywhere(), T.infoButton, Math.floor(Date.now() / 60_000)].join("|");
+    return [getMyChannelId(), getMyGuildId(), settings.store.silentJoin, canOpenModViewEverywhere(), T.infoButton, Math.floor(Date.now() / 60_000)].join("|");
 }
 
 /** Shown only where it can work, so most people without the rights never see a dead button. */
@@ -250,10 +249,9 @@ export function rowSignature(user: TrackedUser, sharedKey: string): string {
         getUserDisplayName(user.id, user.name),
         getAvatarUrl(user.id),
         voice && [voice.channelId, voice.memberCount, voice.participantIds.join(","), voice.isMuted, voice.isDeafened, voice.selfVideo, voice.selfStream, voice.canView, voice.canJoin, voice.isFull, voice.isMyChannel].join(","),
-        voice && muteAccessForChannel(voice.channelId),
         presence.status, presence.isMobile, presence.known, presence.activity, presence.activityKind,
         presence.platforms.map(entry => entry.platform + entry.status).join(","),
-        getMoveAccess(user.id), getReturnChannel(user.id)?.name, canShowMagnet(user.id), canShowStickyMute(user.id),
+        getMoveAccess(user.id), getReturnChannel(user.id)?.name, canShowMagnet(user.id),
         isQueuedFor(voice?.channelId ?? user.lastChannelId ?? ""),
         getLastLeave(user.id)?.at,
         getRecentChange(user.id, getRecentMarkMs())?.at,
@@ -319,18 +317,6 @@ export function UserRow({ user, drag }: UserRowProps) {
     const uncheckedNote = moveAccess === "unknown" ? T.permissionUnchecked : "";
     const returnTo = canMove ? getReturnChannel(user.id) : null;
     const showMagnet = canShowMagnet(user.id);
-    const showStickyMute = canShowStickyMute(user.id);
-
-    const stickyMuteFull = !user.stickyMute && isStickyMuteLimitReached();
-    const stickyMuteTooltip = stickyMuteFull
-        ? T.stickyMuteLimitReached(MAX_STICKY_MUTED)
-        : !user.stickyMute
-            ? T.stickyMuteOff
-        : !voice
-            ? T.stickyMuteWaiting
-            : muteAccessForChannel(voice.channelId) === "no"
-                ? T.stickyMuteNoPermissionHere
-                : T.stickyMuteOn;
 
     const magnetTooltip = !user.autoPull
         ? T.magnetOff
@@ -378,7 +364,6 @@ export function UserRow({ user, drag }: UserRowProps) {
 
     // user.name, not the display name, because a translated placeholder must not be saved.
     const handleMagnet = () => toggleMagnetFor(user.id, user.name);
-    const handleStickyMute = () => toggleStickyMuteFor(user.id, user.name);
     const handleAutoJoin = () => toggleAutoJoinFor(user.id, user.name);
 
     const openThisProfile = () => openProfile(user.id);
@@ -412,7 +397,6 @@ export function UserRow({ user, drag }: UserRowProps) {
                         </span>
                     )}
                     {user.autoJoin && <span className={cl("badge") + " " + cl("badge-auto")}>{T.badgeAuto}</span>}
-                    {user.stickyMute && <span className={cl("badge") + " " + cl("badge-muted")}>{T.badgeMuted}</span>}
                     <PlatformIcons platforms={presence.platforms} />
                 </div>
 
@@ -475,16 +459,6 @@ export function UserRow({ user, drag }: UserRowProps) {
                             tooltip={magnetTooltip + uncheckedNote}
                             active={user.autoPull}
                             onClick={handleMagnet}
-                        />
-                    )}
-                    {showStickyMute && (
-                        <ActionButton
-                            icon={<MicOffIcon />}
-                            tooltip={stickyMuteTooltip + uncheckedNote}
-                            active={user.stickyMute}
-                            danger={user.stickyMute}
-                            disabled={stickyMuteFull}
-                            onClick={handleStickyMute}
                         />
                     )}
                 </div>

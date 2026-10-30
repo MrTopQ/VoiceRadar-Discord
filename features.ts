@@ -20,7 +20,6 @@ import { getApiHealth } from "./apiHealth";
 import { T } from "./i18n";
 import { needsFullRestart } from "./mainProcess";
 import { ALERT_OFF, CUSTOM_SOUND, getJoinAlert, settings } from "./settings";
-import { getStickyMuted } from "./store";
 
 /** Pending is a normal wait during startup, waiting means something needs a look. */
 export type FeatureLevel = "good" | "pending" | "waiting" | "bad";
@@ -126,12 +125,6 @@ function features(): Feature[] {
             works: T.healthModerationOk,
             parts: [T.apiModeratorActions, T.apiMoveMembersFlag],
             off: () => !settings.store.moderatorMode
-        },
-        {
-            title: T.healthStickyMuteTitle,
-            works: T.healthStickyMuteOk,
-            parts: [T.apiModeratorActions, T.apiMuteMembersFlag, T.apiVoiceEvents],
-            off: () => !settings.store.moderatorMode && getStickyMuted().length === 0
         },
         {
             title: T.healthWindowTitle,

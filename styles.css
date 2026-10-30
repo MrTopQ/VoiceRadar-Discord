@@ -84,12 +84,6 @@
     max-height: 100%;
 }
 
-.vr-window.vr-window-md {
-    width: min(620px, 100%);
-    height: auto;
-    max-height: 100%;
-}
-
 .vr-window.vr-window-embedded {
     width: 100%;
     height: min(76vh, 760px);
@@ -100,8 +94,7 @@
     animation: none;
 }
 
-.vr-window.vr-window-embedded.vr-window-lg,
-.vr-window.vr-window-embedded.vr-window-md {
+.vr-window.vr-window-embedded.vr-window-lg {
     height: auto;
     max-height: 76vh;
 }
@@ -241,13 +234,6 @@
 .vr-close:hover {
     background: var(--vr-mod);
     color: var(--vr-text-strong);
-}
-
-.vr-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    width: 100%;
 }
 
 .vr-status {

@@ -36,9 +36,10 @@ import { toast, ToastType } from "../toast";
 import { sweepCurrentChannel } from "../tracker";
 import { cl } from "./common";
 import { RadarIcon } from "./icons";
-import { FollowCard, Footer, isLiveOnly, LiveFilter, PendingChips, SearchBox, type Tab, Tabs } from "./RadarControls";
+import { EverywhereToggle, FollowCard, Footer, isLiveOnly, isSearchingEverywhere, LiveFilter, PendingChips, SearchBox, type Tab, Tabs } from "./RadarControls";
 import { Header, readState, WINDOW_LABEL } from "./RadarHeader";
 import { type DragHandlers, getMemoUserRow, rowSharedKey, rowSignature } from "./UserRow";
+import { VoiceSearchResults } from "./VoiceSearchResults";
 import { closeWindow, isWindowOpen, openWindow } from "./Window";
 
 const LIVE_REFRESH_MS = 15000;
@@ -225,6 +226,7 @@ function RadarWindow({ onClose, embedded = false }: { onClose: () => void; embed
                     recent={{ total: recentMatching.length, live: liveRecent }}
                 />
                 <SearchBox query={query} setQuery={setQuery} />
+                <EverywhereToggle onChanged={forceUpdate} />
                 <LiveFilter onChanged={forceUpdate} />
                 <PendingChips onChanged={forceUpdate} />
             </div>
@@ -280,6 +282,10 @@ function RadarWindow({ onClose, embedded = false }: { onClose: () => void; embed
                     <div className={cl("empty-tab")}>
                         {isLiveOnly() ? T.tabEmptyLive : T.tabEmpty}
                     </div>
+                )}
+
+                {isSearchingEverywhere() && query.trim() && (
+                    <VoiceSearchResults query={query} shownIds={new Set(shownList.map(user => user.id))} onChanged={forceUpdate} />
                 )}
             </div>
 

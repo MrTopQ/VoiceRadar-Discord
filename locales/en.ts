@@ -155,8 +155,6 @@ export const en = {
     healthStreamsOk: "The LIVE badge, the thumbnail on hover and the full size one on click.",
     healthModerationTitle: "Moderator actions",
     healthModerationOk: "Pulling somebody over, putting them back and the magnet.",
-    healthStickyMuteTitle: "Sticky server mute",
-    healthStickyMuteOk: "A server mute that goes back on whenever it is lifted or they rejoin.",
     healthWindowTitle: "The radar window",
     healthWindowOk: "It opens from the hotkey, from every right click menu and from the account panel.",
     healthPanelButtonTitle: "The account panel button",
@@ -216,6 +214,14 @@ export const en = {
     settingsUnavailable: "Could not open the plugin settings, open them from Vencord, Plugins tab",
     hotkeyHint: "Click, then press the new combination. Esc leaves it as it is",
     searchClear: "Clear the search",
+    everywhereLabel: "All voice",
+    everywhereOffHint: "Also find people outside the radar, in every voice channel on the servers the plugin watches",
+    everywhereOnHint: "Searching every voice channel. Click to search only the list",
+    foundTitle: "In voice anywhere",
+    foundTooShort: "Type at least two letters of a name or an ID to search every voice channel",
+    foundNone: "Nobody else with that name is in a voice channel",
+    foundMore: (count: number) => `${count} more ${pluralEn(count, "person", "people")}, narrow the name down`,
+    badgeTracked: "IN RADAR",
     closeWindow: "Close",
     windowCrashed: "The Voice Radar window ran into an error and closed. The details are in the console (Ctrl+Shift+I)",
     filterLabel: "Who to show",
@@ -249,7 +255,6 @@ export const en = {
     infoFriend: "Friend",
     infoFriendBlocked: "blocked",
     infoMutualTitle: "Shared servers",
-    infoAndMore: (count: number) => ` and ${count} more`,
     infoJoinedGuild: "Member of the server they are in",
     infoJoinedGuildSince: (date: string, age: string) => `since ${date}, ${age}`,
     infoMutualLoading: "Asking Discord for the full list",
@@ -313,7 +318,6 @@ export const en = {
 
     /* ── a person's row ──────────────────────────────────────────────────────────────────── */
     badgeAuto: "AUTO",
-    badgeMuted: "MUTED",
     badgeWithYou: "WITH YOU",
     badgeLive: "LIVE",
 
@@ -342,11 +346,6 @@ export const en = {
     magnetIdleTargetOffline: "Magnet on, waiting, because they are not in a voice channel yet",
     magnetActive: "Magnet on, they get dragged back whenever they wander off",
 
-    stickyMuteOff: "Sticky mute. Server-mutes them and mutes them again every time the mute is lifted or they rejoin, in any server where you can mute. Stays until you switch this button off",
-    stickyMuteOn: "Sticky mute on in every server where you can mute. Lifted or rejoined, they are muted again at once. Click to switch it off",
-    stickyMuteNoPermissionHere: "Sticky mute on, but you have no Mute Members here, so no mute goes out. Click to switch it off",
-    stickyMuteLimitReached: (max: number) => `Sticky mute is already on ${max} of ${max} people, the most it allows. Switch it off for someone to use it here`,
-    stickyMuteWaiting: "Sticky mute on and waiting, they are not in voice. They are muted the moment they join",
 
     joinNotInVoice: "Not in a voice channel",
     joinAlreadyThere: "You are already there",
@@ -388,10 +387,6 @@ export const en = {
     alreadyWithUser: (name: string) => `You are already with ${name}`,
     magnetOffFor: (name: string) => `Magnet off for ${name}`,
     magnetOnFor: (name: string) => `${name} is now stuck to your channel`,
-    stickyMuteOnFor: (name: string) => `${name} stays muted until you switch it off`,
-    stickyMuteOffFor: (name: string) => `Sticky mute off for ${name}`,
-    stickyMuteRestored: (name: string) => `${name} is muted again`,
-    stickyMuteNoPermission: (name: string) => `No Mute Members there, so ${name} cannot be held muted`,
     magnetGaveUp: (name: string) => `Magnet off, ${name} is leaving faster than they can be brought back`,
     magnetOffNoPermission: (name: string) => `Magnet off, ${name} cannot be moved here, so retrying would change nothing`,
     magnetCoolingDown: (name: string, seconds: number) =>
@@ -457,7 +452,6 @@ export const en = {
     restartByHand: "Could not restart from here. Quit Discord from the tray and open it again",
     lookupFailed: "Could not open the site in your browser",
     menuHistory: "Voice Radar info",
-    menuStickyMute: "Sticky mute, comes back until you switch it off",
     menuTrackChannel: (count: number) => `Add everyone here to the radar (${count})`,
     menuPullEveryoneHere: "Pull everyone here into my channel",
 
@@ -593,7 +587,6 @@ export const en = {
     apiPermissions: "permission checks (PermissionStore.can)",
     apiModeratorActions: "moderator actions (RestAPI.patch)",
     apiMoveMembersFlag: "the Move Members permission flag",
-    apiMuteMembersFlag: "the Mute Members permission flag",
     apiVoiceEvents: "being told when somebody moves (FluxDispatcher.subscribe), without which the list never grows and nothing is ever announced",
 
     /* ── relative time ───────────────────────────────────────────────────────────────────── */

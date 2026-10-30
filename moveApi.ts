@@ -124,16 +124,6 @@ export async function moveMember(guildId: string, userId: string, toChannelId: s
     return patchMember(guildId, userId, body, name, context);
 }
 
-export async function setMemberMute(guildId: string, userId: string, muted: boolean, name: string): Promise<MoveOutcome> {
-    const body = { mute: muted };
-
-    const attempt = await patchMember(guildId, userId, body, name, {});
-    if (attempt.ok || !attempt.retryAfterMs) return attempt;
-
-    await sleep(attempt.retryAfterMs);
-    return patchMember(guildId, userId, body, name, {});
-}
-
 let batchRunning = false;
 
 let batchGeneration = 0;

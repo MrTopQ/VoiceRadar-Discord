@@ -55,10 +55,10 @@ import { migrateJoinAlert, settings } from "./settings";
 import { loadSightings, shutdownSightings } from "./sightings";
 import { forgetSoundState } from "./sound";
 import { speakingProblems } from "./speaking";
-import { forgetStickyMuteState, startStickyMuteSweeps } from "./stickyMute";
 import { loadStore, shutdownStore } from "./store";
 import { resetStreamCache, streamProblems } from "./streams";
 import { setJoinedListOpener, startTracking, stopTracking, trackerProblems } from "./tracker";
+import { forgetVoiceSearch } from "./voiceSearch";
 import { loadWatchLog, shutdownWatchLog } from "./watchLog";
 
 /** The panel patch stays until a restart, so the button hides itself while the plugin is off. */
@@ -245,8 +245,6 @@ export default definePlugin({
 
         startGuildSubscriptions();
 
-        startStickyMuteSweeps();
-
         if (settings.store.showPanelButton) verifyPanelButtonPatch(PATCH_CHECK_ATTEMPTS);
     },
 
@@ -272,7 +270,6 @@ export default definePlugin({
 
         cancelBatches();
 
-        forgetStickyMuteState();
         forgetMoveHistory();
         forgetMagnetState();
         forgetMoveAccess();
@@ -282,6 +279,7 @@ export default definePlugin({
         resetPresenceRequests();
         resetUserLookups();
         resetChannelCaches();
+        forgetVoiceSearch();
         resetStreamCache();
         forgetSoundState();
         forgetCustomSound();

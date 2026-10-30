@@ -40,7 +40,8 @@ Vencord plugin. Remembers everyone you shared a voice channel with and shows whe
 - **Stream preview.** `LIVE` badge, thumbnail on hover, full size on click.
 - **Search.** Nickname, display name or username, and a switch between everybody and only whoever
   is in voice this second. Typing anywhere in the window goes into the search, and the first `Esc`
-  empties it.
+  empties it. The button beside the box widens the search to everybody in voice on the watched
+  servers, people outside the radar included, each with a join and an add button.
 - **Hotkey.** `Alt+2` opens and closes the window. Rebindable, and claimable system wide.
 - **Windows.** The radar, the history, the join list and the health page are drawn on their own
   rather than as Discord modals, which is what lets them open without a stall. A row's buttons sit in
@@ -51,9 +52,7 @@ Vencord plugin. Remembers everyone you shared a voice channel with and shows whe
 - **Moderator mode** (on by default, shows nothing where you lack the rights). Pull one person or a whole channel to you (99 per click,
   confirmation past eight, four moves at a time by default), undo a pull, magnet one person back each
   time they leave. Pulling needs Move Members in both channels of the same server. The magnet shows
-  wherever you may move the person and waits while you sit somewhere it cannot pull them to. A sticky mute server-mutes
-  a person again whenever the mute is lifted or they rejoin, in any server where you hold Mute
-  Members, until you switch it off.
+  wherever you may move the person and waits while you sit somewhere it cannot pull them to.
 - **UI.** Account panel button with a counter, submenu in user menus and profiles, entry in voice and
   stage channel menus.
 - **Languages.** English and Russian, following Discord by default.
@@ -95,7 +94,7 @@ Eighteen, in panel order. Vencord prints a longer description beside each.
 | Servers watched for voice | slider, 10 to 200 | 100 | Discord only sends voice states for subscribed servers, so joins past this number go unseen. Your people's servers come first, and the window says how many did not fit |
 | Keep timers awake | switch | on | Holds Discord's timers at normal pace in the background, so a join reaches you in seconds instead of minutes |
 | Group move speed | dropdown | Fast | Careful sends one move at a time, Fast four, Instant eight. Every move is a line in the server's audit log |
-| Moderator mode | switch | on | Adds pull, undo, magnet and sticky mute where you hold the permission |
+| Moderator mode | switch | on | Adds pull, undo and magnet where you hold the permission |
 | Lookup site | text | discord-sensor.com/members/{id} | The info window's button, {id} becomes the person's ID, empty removes it |
 | Panel button | switch | on | Goes away at once, needs a restart to come back |
 | Hotkey system wide | switch | off | The hotkey fires while Discord sits in the background and brings it up. Needs a full restart |

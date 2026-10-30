@@ -35,7 +35,7 @@ import { clearHistory, getAutoJoinTarget } from "../store";
 import { toast, ToastType } from "../toast";
 import { cl } from "./common";
 import { Hint } from "./Hint";
-import { ClockIcon, CloseIcon, GearIcon, KeyboardIcon, MicIcon, MicOffIcon, ReturnIcon, SearchIcon, TargetIcon, TrashIcon } from "./icons";
+import { ClockIcon, CloseIcon, GearIcon, GlobeIcon, KeyboardIcon, MicIcon, MicOffIcon, ReturnIcon, SearchIcon, TargetIcon, TrashIcon } from "./icons";
 import { TYPE_TARGET_ATTRIBUTE } from "./Overlay";
 
 function HotkeyRecorder() {
@@ -137,6 +137,32 @@ export function LiveFilter({ onChanged }: { onChanged: () => void; }) {
             {option(false, T.filterAll)}
             {option(true, T.filterLive)}
         </div>
+    );
+}
+
+let searchEverywhere = false;
+
+export const isSearchingEverywhere = () => searchEverywhere;
+
+/** Widens the search from the list to everybody in voice on the watched servers. */
+export function EverywhereToggle({ onChanged }: { onChanged: () => void; }) {
+    return (
+        <Hint text={searchEverywhere ? T.everywhereOnHint : T.everywhereOffHint}>
+            {hintProps => (
+                <button
+                    {...hintProps}
+                    className={cl("chip") + " " + cl("everywhere") + (searchEverywhere ? " " + cl("chip-on") : "")}
+                    aria-pressed={searchEverywhere}
+                    onClick={() => {
+                        searchEverywhere = !searchEverywhere;
+                        onChanged();
+                    }}
+                >
+                    <GlobeIcon />
+                    {T.everywhereLabel}
+                </button>
+            )}
+        </Hint>
     );
 }
 

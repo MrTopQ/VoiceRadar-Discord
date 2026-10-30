@@ -284,6 +284,23 @@ export function SearchIcon({ size = 16, className }: IconProps) {
     );
 }
 
+export function GlobeIcon({ size = 16, className }: IconProps) {
+    return (
+        <svg {...base(size)} className={className}>
+            <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="2" />
+            <path d="M3.5 12h17M12 3.5c2.4 2.3 3.6 5.1 3.6 8.5s-1.2 6.2-3.6 8.5c-2.4-2.3-3.6-5.1-3.6-8.5s1.2-6.2 3.6-8.5Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+        </svg>
+    );
+}
+
+export function PlusIcon({ size = 18, className }: IconProps) {
+    return (
+        <svg {...base(size)} className={className}>
+            <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+    );
+}
+
 export function CloseIcon({ size = 18, className }: IconProps) {
     return (
         <svg {...base(size)} className={className}>

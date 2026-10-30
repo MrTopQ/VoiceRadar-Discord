@@ -30,12 +30,11 @@ import { T } from "./i18n";
 import { joinVoiceChannel } from "./join";
 import { noteOurMenu } from "./menuWatch";
 import { getReturnableBatch, sendBatchBack } from "./moveHistory";
-import { canMoveUser, canShowMagnet, canShowStickyMute, isModeratorMode } from "./movePermissions";
+import { canMoveUser, canShowMagnet, isModeratorMode } from "./movePermissions";
 import { getStoredName, getUserDisplayName, UNKNOWN_NAME } from "./names";
 import { pullTheirChannelToMe, pullToMyChannel, pullUsersToMe } from "./pull";
 import { cancelQueue, isQueuedFor, queueForChannel } from "./queue";
 import { settings } from "./settings";
-import { isStickyMuteLimitReached, toggleStickyMuteFor } from "./stickyMute";
 import { addUser, addUsers, getTrackedUser, removeUser, toggleNotify, togglePin } from "./store";
 import { toast, ToastType } from "./toast";
 
@@ -89,8 +88,7 @@ export const userContextPatch: NavContextMenuPatchCallback = (children, { user, 
     const voice = getVoiceInfo(user.id);
     const canMove = canMoveUser(user.id);
     const returnable = getReturnableBatch().length;
-    const showStickyMute = canShowStickyMute(user.id);
-    const showModeration = (voice != null && canMove) || canShowMagnet(user.id) || showStickyMute;
+    const showModeration = (voice != null && canMove) || canShowMagnet(user.id);
 
     insertNearAnchor(children, (
         <Menu.MenuItem id="voice-radar" key="voice-radar" label={T.menuRoot}>
@@ -188,15 +186,6 @@ export const userContextPatch: NavContextMenuPatchCallback = (children, { user, 
                         checked={!!tracked?.autoPull}
                         action={() => toggleMagnetFor(user.id, storedName)}
                     />
-                    {showStickyMute && (
-                        <CheckboxItem
-                            id="voice-radar-sticky-mute"
-                            label={T.menuStickyMute}
-                            checked={!!tracked?.stickyMute}
-                            disabled={!tracked?.stickyMute && isStickyMuteLimitReached()}
-                            action={() => toggleStickyMuteFor(user.id, storedName)}
-                        />
-                    )}
                 </Menu.MenuItem>
             )}
         </Menu.MenuItem>
@@ -216,7 +205,6 @@ interface ChannelContextProps {
 
 export const channelContextPatch: NavContextMenuPatchCallback = (children, { channel }: ChannelContextProps) => {
     noteOurMenu("channel");
-    const { CheckboxItem, Separator } = menuParts();
     // 2 is a voice channel, 13 a stage.
     if (!channel?.id || (channel.type !== 2 && channel.type !== 13)) return;
 

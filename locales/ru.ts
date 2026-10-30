@@ -160,8 +160,6 @@ export const ru: Messages = {
     healthStreamsOk: "Значок LIVE, картинка по наведению и крупная по клику.",
     healthModerationTitle: "Действия модератора",
     healthModerationOk: "Перенос человека к себе, возврат обратно и магнит.",
-    healthStickyMuteTitle: "Несъёмный мут",
-    healthStickyMuteOk: "Серверный мут, который плагин выдаёт снова, как только его сняли или человек перезашёл.",
     healthWindowTitle: "Окно радара",
     healthWindowOk: "Открывается горячей клавишей, из любого правого клика и с панели аккаунта.",
     healthPanelButtonTitle: "Кнопка на панели аккаунта",
@@ -221,6 +219,14 @@ export const ru: Messages = {
     settingsUnavailable: "Не удалось открыть настройки плагина, откройте их через Vencord, вкладка «Плагины»",
     hotkeyHint: "Нажмите, затем новое сочетание. Esc оставит как было",
     searchClear: "Очистить поиск",
+    everywhereLabel: "Во всех войсах",
+    everywhereOffHint: "Искать и тех, кого нет в радаре, во всех голосовых каналах на серверах, за которыми следит плагин",
+    everywhereOnHint: "Поиск идёт по всем голосовым каналам. Нажмите, чтобы искать только по списку",
+    foundTitle: "Во всех голосовых",
+    foundTooShort: "Напишите хотя бы две буквы ника или ID, и поиск пройдёт по всем голосовым каналам",
+    foundNone: "Больше никого с таким ником в голосовых каналах нет",
+    foundMore: (count: number) => `И ещё ${count} ${pluralRu(count, "человек", "человека", "человек")}, уточните ник`,
+    badgeTracked: "В РАДАРЕ",
     closeWindow: "Закрыть",
     windowCrashed: "Окно Voice Radar наткнулось на ошибку и закрылось. Подробности в консоли (Ctrl+Shift+I)",
     filterLabel: "Кого показывать",
@@ -254,7 +260,6 @@ export const ru: Messages = {
     infoFriend: "В друзьях",
     infoFriendBlocked: "в чёрном списке",
     infoMutualTitle: "Общие серверы",
-    infoAndMore: (count: number) => ` и ещё ${count}`,
     infoJoinedGuild: "Участник сервера, где сидит сейчас",
     infoJoinedGuildSince: (date: string, age: string) => `с ${date}, ${age}`,
     infoMutualLoading: "Загружаем полный список у Discord",
@@ -318,7 +323,6 @@ export const ru: Messages = {
 
     /* ── строка человека ─────────────────────────────────────────────────────────────────── */
     badgeAuto: "АВТО",
-    badgeMuted: "МУТ",
     badgeWithYou: "С ВАМИ",
     badgeLive: "LIVE",
 
@@ -347,11 +351,6 @@ export const ru: Messages = {
     magnetIdleTargetOffline: "Магнит включён и ждёт, человека пока нет в голосовом канале",
     magnetActive: "Магнит включён, при любом уходе человека возвращает к вам",
 
-    stickyMuteOff: "Несъёмный мут. Плагин выдаёт серверный мут и выдаёт его снова каждый раз, когда мут снимут или человек перезайдёт, на любом сервере, где у вас есть право мутить. Держится, пока вы не выключите эту кнопку",
-    stickyMuteOn: "Несъёмный мут включён на всех серверах, где вы можете мутить. Сняли мут или человек перезашёл, плагин сразу мутит снова. Нажмите, чтобы выключить",
-    stickyMuteNoPermissionHere: "Несъёмный мут включён, но здесь у вас нет права отключать участникам звук, поэтому мут не выдаётся. Нажмите, чтобы выключить",
-    stickyMuteLimitReached: (max: number) => `Несъёмный мут уже у ${max} из ${max} человек, это максимум. Снимите его с кого-нибудь, чтобы включить здесь`,
-    stickyMuteWaiting: "Несъёмный мут включён и ждёт, человека нет в голосовом. Как только зайдёт, сразу получит мут",
 
     joinNotInVoice: "Не в голосовом канале",
     joinAlreadyThere: "Вы уже там",
@@ -393,10 +392,6 @@ export const ru: Messages = {
     alreadyWithUser: (name: string) => `Вы уже вместе с ${name}`,
     magnetOffFor: (name: string) => `Магнит выключен для ${name}`,
     magnetOnFor: (name: string) => `Теперь удерживаем в вашем канале ${name}`,
-    stickyMuteOnFor: (name: string) => `${name} в несъёмном муте, пока вы его не выключите`,
-    stickyMuteOffFor: (name: string) => `Несъёмный мут снят с ${name}`,
-    stickyMuteRestored: (name: string) => `${name} снова в муте`,
-    stickyMuteNoPermission: (name: string) => `Нет права отключать звук, ${name} в муте не удержать`,
     magnetGaveUp: (name: string) => `Магнит снят, ${name} уходит быстрее, чем возвращается`,
     magnetOffNoPermission: (name: string) => `Магнит снят, ${name} сюда не переместить, повторять бессмысленно`,
     magnetCoolingDown: (name: string, seconds: number) =>
@@ -462,7 +457,6 @@ export const ru: Messages = {
     restartByHand: "Отсюда перезапустить не вышло. Закройте Discord через трей и откройте снова",
     lookupFailed: "Не удалось открыть сайт в браузере",
     menuHistory: "Информация в Voice Radar",
-    menuStickyMute: "Несъёмный мут, возвращается, пока вы его не выключите",
     menuTrackChannel: (count: number) => `Добавить в радар всех отсюда (${count})`,
     menuPullEveryoneHere: "Перетащить всех отсюда в мой канал",
 
@@ -602,7 +596,6 @@ export const ru: Messages = {
     apiPermissions: "проверка прав (PermissionStore.can)",
     apiModeratorActions: "действия модератора (RestAPI.patch)",
     apiMoveMembersFlag: "флаг права Move Members",
-    apiMuteMembersFlag: "флаг права Mute Members",
     apiVoiceEvents: "оповещения о том, что кто-то переместился (FluxDispatcher.subscribe), без них список не пополняется и ничего не объявляется",
 
     /* ── относительное время ─────────────────────────────────────────────────────────────── */

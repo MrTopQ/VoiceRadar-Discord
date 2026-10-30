@@ -36,7 +36,7 @@ export interface Overlay {
     destroy(): void;
 }
 
-export type OverlaySize = "md" | "lg" | "xl";
+export type OverlaySize = "lg" | "xl";
 
 /** Open windows, last on top, and only the top one handles keys. */
 const stack: object[] = [];

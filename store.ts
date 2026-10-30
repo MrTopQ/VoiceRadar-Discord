@@ -40,8 +40,6 @@ export interface TrackedUser {
     lastChannelName: string | null;
     manual: boolean;
     order: number | null;
-    stickyMute: boolean;
-    stickyMuteGuildId: string | null;
 }
 
 export interface VisibleUsers {
@@ -131,9 +129,7 @@ function normalize(raw: Partial<TrackedUser>): TrackedUser | null {
         lastChannelId: raw.lastChannelId ?? null,
         lastChannelName: raw.lastChannelName ?? null,
         manual: !!raw.manual,
-        order: Number.isFinite(raw.order as number) ? Number(raw.order) : null,
-        stickyMute: !!raw.stickyMute,
-        stickyMuteGuildId: raw.stickyMuteGuildId ?? null
+        order: Number.isFinite(raw.order as number) ? Number(raw.order) : null
     };
 }
 
@@ -145,7 +141,7 @@ function comparePinned(a: TrackedUser, b: TrackedUser): number {
 }
 
 function isProtected(user: TrackedUser): boolean {
-    return user.pinned || user.notify || user.autoJoin || user.autoPull || user.manual || user.stickyMute;
+    return user.pinned || user.notify || user.autoJoin || user.autoPull || user.manual;
 }
 
 function trim(list: TrackedUser[]): TrackedUser[] {
@@ -413,27 +409,6 @@ export function togglePin(id: string) {
     const user = getTrackedUser(id);
     if (!user) return;
     commit(users.map(entry => (entry.id === id ? { ...entry, pinned: !entry.pinned } : entry)));
-}
-
-export function setStickyMute(id: string, on: boolean, guildId: string | null = null) {
-    const user = getTrackedUser(id);
-    if (!user) return;
-    if (user.stickyMute === on && (!on || user.stickyMuteGuildId === guildId)) return;
-
-    commit(users.map(entry => (entry.id === id
-        ? { ...entry, stickyMute: on, stickyMuteGuildId: on ? guildId : null }
-        : entry)));
-}
-
-export function rememberStickyMuteGuild(id: string, guildId: string) {
-    const user = getTrackedUser(id);
-    if (!user?.stickyMute || user.stickyMuteGuildId === guildId) return;
-
-    commit(users.map(entry => (entry.id === id ? { ...entry, stickyMuteGuildId: guildId } : entry)));
-}
-
-export function getStickyMuted(): TrackedUser[] {
-    return users.filter(user => user.stickyMute);
 }
 
 export function toggleNotify(id: string) {
