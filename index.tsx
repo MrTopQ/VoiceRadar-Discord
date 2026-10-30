@@ -20,36 +20,46 @@ import "./styles.css";
 import "./list.css";
 import "./windows.css";
 
+import { addGlobalContextMenuPatch, removeGlobalContextMenuPatch } from "@api/ContextMenu";
 import ErrorBoundary from "@components/ErrorBoundary";
 import definePlugin from "@utils/types";
 import { UserStore } from "@webpack/common";
 
 import { type ApiHealth, HealthReport, reportBroken, resetApiHealth, setApiHealth, setHealthChecker } from "./apiHealth";
 import { channelProblems, resetChannelCaches } from "./channels";
+import { closeJoinCards, showJoinCard } from "./components/JoinCard";
 import { closeJoinedModal, openJoinedModal } from "./components/JoinedModal";
 import { panelButtonProblems, VoiceRadarPanelButton } from "./components/PanelButton";
 import { closePersonInfo } from "./components/PersonInfoModal";
 import { closeRadarModal, openRadarModal, windowProblems } from "./components/RadarModal";
 import { channelContextPatch, userContextPatch } from "./contextMenus";
+import { forgetCustomSound, loadCustomSound } from "./customSound";
 import { keepTimersAwake, releaseGlobalHotkey, revealDiscord, syncGlobalHotkey } from "./globalHotkey";
 import { startGuildSubscriptions, stopGuildSubscriptions, subscriptionProblems } from "./guildSubscriptions";
 import { registerHotkey, unregisterHotkey } from "./hotkey";
 import { T } from "./i18n";
 import { cancelPendingVoiceActions, joinProblems } from "./join";
+import { setJoinCardShower } from "./joinAlert";
+import { lookupProblems, migrateLookupUrl } from "./lookup";
 import { forgetMagnetState } from "./magnet";
+import { forgetMenuWatch, watchMenus } from "./menuWatch";
+import { modViewProblems, resetModView } from "./modView";
 import { cancelBatches, forgetClicks, moveApiProblems } from "./moveApi";
 import { forgetMoveHistory } from "./moveHistory";
 import { forgetMoveAccess, movePermissionProblems } from "./movePermissions";
 import { nameProblems, resetUserLookups } from "./names";
 import { presenceProblems, resetPresenceRequests } from "./presence";
+import { profileProblems } from "./profileFacts";
 import { resetQueue } from "./queue";
-import { settings } from "./settings";
+import { migrateJoinAlert, settings } from "./settings";
 import { loadSightings, shutdownSightings } from "./sightings";
 import { forgetSoundState } from "./sound";
+import { speakingProblems } from "./speaking";
 import { forgetStickyMuteState, startStickyMuteSweeps } from "./stickyMute";
 import { loadStore, shutdownStore } from "./store";
 import { resetStreamCache, streamProblems } from "./streams";
 import { setJoinedListOpener, startTracking, stopTracking, trackerProblems } from "./tracker";
+import { loadWatchLog, shutdownWatchLog } from "./watchLog";
 
 /** The panel patch stays until a restart, so the button hides itself while the plugin is off. */
 let isRunning = false;
@@ -108,7 +118,11 @@ function checkDiscordApis(): ApiHealth {
         .merge(subscriptionProblems())
         .merge(trackerProblems())
         .merge(windowProblems())
-        .merge(panelButtonProblems());
+        .merge(panelButtonProblems())
+        .merge(speakingProblems())
+        .merge(profileProblems())
+        .merge(lookupProblems())
+        .merge(modViewProblems());
 }
 
 // The build script reads the name from this line, so it stays a literal and comes first.
@@ -157,6 +171,11 @@ export default definePlugin({
         // The hotkey goes first, so the window stays reachable if anything below fails.
         registerHotkey(openRadarModal);
         syncGlobalHotkey(openRadarModal);
+        migrateLookupUrl();
+        migrateJoinAlert();
+        setJoinCardShower(showJoinCard);
+        addGlobalContextMenuPatch(watchMenus);
+        void loadCustomSound();
 
         try {
             await loadStore();
@@ -165,6 +184,7 @@ export default definePlugin({
         }
 
         void loadSightings();
+        void loadWatchLog();
 
         setJoinedListOpener(userIds => {
             revealDiscord();
@@ -219,6 +239,10 @@ export default definePlugin({
         stopGuildSubscriptions();
         keepTimersAwake(false);
         setJoinedListOpener(null);
+        setJoinCardShower(null);
+        removeGlobalContextMenuPatch(watchMenus);
+        forgetMenuWatch();
+        closeJoinCards();
         stopTracking();
         resetQueue();
 
@@ -229,12 +253,14 @@ export default definePlugin({
         forgetMagnetState();
         forgetMoveAccess();
         forgetClicks();
+        resetModView();
 
         resetPresenceRequests();
         resetUserLookups();
         resetChannelCaches();
         resetStreamCache();
         forgetSoundState();
+        forgetCustomSound();
         setHealthChecker(null);
         resetApiHealth();
 
@@ -249,6 +275,7 @@ export default definePlugin({
         }
 
         await shutdownSightings();
+        await shutdownWatchLog();
         await shutdownStore();
     }
 });

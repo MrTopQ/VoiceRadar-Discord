@@ -26,7 +26,7 @@ import { getHotkeyReach, getTimersState, isHotkeyReachSettled } from "../globalH
 import { getSubscriptionProgress, getSubscriptionStatus, isSubscriptionGuarded } from "../guildSubscriptions";
 import { formatHotkey, parseHotkey } from "../hotkey";
 import { T } from "../i18n";
-import { DEFAULT_HOTKEY, settings } from "../settings";
+import { ALERT_OFF, CUSTOM_SOUND, DEFAULT_HOTKEY, getJoinAlert, settings } from "../settings";
 import { getStoreState, getUsers } from "../store";
 import { formatRelativeTime } from "../time";
 import { getTrackerStats } from "../tracker";
@@ -128,14 +128,12 @@ function environmentSection(): Row[] {
         detail: `${combo}. ${T.statusHotkey[reach]}`
     });
 
-    const style = settings.store.notifyStyle;
-    const usesSystemNotifications = style !== "toast";
+    const style = getJoinAlert();
+    const usesSystemNotifications = style !== ALERT_OFF;
     const permission = usesSystemNotifications && typeof Notification !== "undefined"
         ? Notification.permission
         : "granted";
-    const styleLabel = style === "toast"
-        ? T.notifyStyleToast
-        : style === "both" ? T.notifyStyleBoth : T.notifyStyleNotification;
+    const styleLabel = style === ALERT_OFF ? T.joinAlertOff : style === CUSTOM_SOUND ? T.joinAlertCustom : T.joinAlertChime;
 
     const { startedAt, lastEventAt, lastNotifyAt, announced } = getTrackerStats();
 

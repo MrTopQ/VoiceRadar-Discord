@@ -18,7 +18,7 @@
 
 import { getApiHealth } from "./apiHealth";
 import { T } from "./i18n";
-import { CHIME_SOUND, getJoinSound, settings } from "./settings";
+import { ALERT_OFF, CUSTOM_SOUND, getJoinAlert, settings } from "./settings";
 import { getStickyMuted } from "./store";
 
 export type FeatureLevel = "good" | "waiting" | "bad";
@@ -73,7 +73,38 @@ function features(): Feature[] {
         {
             title: T.healthOpenChannelTitle,
             works: T.healthOpenChannelOk,
-            parts: [T.apiOpenChannel]
+            parts: [T.apiShowChannel, T.apiOpenChannel]
+        },
+        {
+            title: T.healthUserMenuTitle,
+            works: T.healthUserMenuOk,
+            parts: [T.apiUserMenu]
+        },
+        {
+            title: T.healthMenuEntriesTitle,
+            works: T.healthMenuEntriesOk,
+            parts: [T.apiUserMenuEntries, T.apiChannelMenuEntries]
+        },
+        {
+            title: T.healthSpeakingTitle,
+            works: T.healthSpeakingOk,
+            parts: [T.apiSpeaking]
+        },
+        {
+            title: T.healthMutualTitle,
+            works: T.healthMutualOk,
+            parts: [T.apiMutualGuilds]
+        },
+        {
+            title: T.healthModViewTitle,
+            works: T.healthModViewOk,
+            parts: [T.apiModView, T.apiModViewKind, T.apiModViewMenu]
+        },
+        {
+            title: T.healthLookupTitle,
+            works: T.healthLookupOk,
+            parts: [T.apiLookupWindow],
+            off: () => !String(settings.store.lookupUrl ?? "").trim()
         },
         {
             title: T.healthPermissionsTitle,
@@ -109,10 +140,16 @@ function features(): Feature[] {
             off: () => !settings.store.showPanelButton
         },
         {
+            title: T.healthJoinCardTitle,
+            works: `${T.healthJoinCardOk} ${T.healthJoinCardWindows}`,
+            parts: [T.apiJoinCard],
+            off: () => getJoinAlert() === ALERT_OFF
+        },
+        {
             title: T.healthJoinSoundTitle,
-            works: getJoinSound() === CHIME_SOUND ? T.healthJoinSoundChime : T.healthJoinSoundOk,
+            works: getJoinAlert() === CUSTOM_SOUND ? T.healthJoinSoundCustom : T.healthJoinSoundChime,
             parts: [],
-            off: () => getJoinSound() === "off"
+            off: () => getJoinAlert() === ALERT_OFF
         },
         {
             title: T.healthToastsTitle,

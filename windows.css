@@ -278,6 +278,21 @@
     white-space: nowrap;
 }
 
+.vr-guild-chip-click {
+    cursor: pointer;
+    transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.vr-guild-chip-click:hover {
+    background: var(--vr-mod-strong);
+    color: var(--vr-text-strong);
+}
+
+.vr-guild-chip-click:focus-visible {
+    outline: 2px solid var(--vr-brand);
+    outline-offset: 1px;
+}
+
 .vr-guild-chip-more {
     padding: 3px 10px;
     color: var(--vr-text-muted);
@@ -317,6 +332,16 @@
     color: var(--vr-text-muted);
 }
 
+/* A stretch the plugin did not see, because Discord was closed or offline. */
+.vr-info-gap {
+    margin: 2px 8px;
+    padding: 3px 10px;
+    border-left: 2px dashed var(--vr-border-strong);
+    color: var(--vr-text-muted);
+    font-size: 12px;
+    font-style: italic;
+}
+
 .vr-info-line {
     display: flex;
     align-items: center;
@@ -354,11 +379,27 @@
     background: var(--text-link, #00a8fc);
 }
 
+.vr-info-dot-you-joined,
+.vr-info-kind-you-joined {
+    color: var(--status-positive, #23a55a);
+}
+
+.vr-info-dot-you-joined {
+    background: transparent;
+    box-shadow: inset 0 0 0 2px var(--status-positive, #23a55a);
+}
+
 .vr-info-dot-left {
     background: var(--vr-text-muted);
 }
 
-.vr-info-kind-left {
+.vr-info-dot-you-left {
+    background: transparent;
+    box-shadow: inset 0 0 0 2px var(--vr-text-muted);
+}
+
+.vr-info-kind-left,
+.vr-info-kind-you-left {
     color: var(--vr-text-muted);
 }
 

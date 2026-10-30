@@ -85,6 +85,31 @@
     background: var(--vr-brand);
 }
 
+/* Who just joined or left, for as long as the setting says. */
+.vr-row.vr-row-recent-joined {
+    border-color: color-mix(in srgb, var(--vr-green) 55%, transparent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--vr-green) 25%, transparent);
+}
+
+.vr-row.vr-row-recent-left {
+    border-color: color-mix(in srgb, var(--vr-red) 45%, transparent);
+    background-image: linear-gradient(90deg, color-mix(in srgb, var(--vr-red) 10%, transparent), transparent 45%);
+}
+
+.vr-row.vr-row-recent-left::before {
+    background: var(--vr-red);
+}
+
+.vr-badge.vr-badge-recent-joined {
+    background: color-mix(in srgb, var(--vr-green) 22%, transparent);
+    color: var(--vr-green-text);
+}
+
+.vr-badge.vr-badge-recent-left {
+    background: color-mix(in srgb, var(--vr-red) 20%, transparent);
+    color: var(--vr-red-text);
+}
+
 .vr-row-draggable {
     cursor: grab;
 }
@@ -121,6 +146,11 @@
     height: 44px;
     border-radius: 50%;
     object-fit: cover;
+}
+
+/* The same green ring Discord draws around whoever is talking in your channel. */
+.vr-avatar.vr-avatar-speaking {
+    box-shadow: 0 0 0 2px var(--vr-row-bg, var(--background-base-low, #232428)), 0 0 0 4px var(--vr-green);
 }
 
 .vr-status-dot {
@@ -390,6 +420,36 @@
 .vr-action-disabled {
     opacity: 0.35;
     cursor: not-allowed;
+}
+
+/* One button in two halves, the main action and a list of the other choices beside it. */
+.vr-split {
+    display: flex;
+    border-radius: 8px;
+    transition: background-color 0.12s ease;
+}
+
+.vr-split:hover {
+    background: var(--vr-mod);
+}
+
+.vr-action.vr-split-main {
+    border-radius: 8px 0 0 8px;
+}
+
+.vr-action.vr-split-more {
+    width: 16px;
+    border-radius: 0 8px 8px 0;
+    color: var(--vr-text-muted);
+}
+
+.vr-split:hover .vr-split-more {
+    box-shadow: inset 1px 0 0 var(--vr-border-strong);
+}
+
+.vr-split .vr-action:active {
+    transform: none;
+    background: var(--vr-mod-strong);
 }
 
 .vr-action.vr-action-disabled:hover,

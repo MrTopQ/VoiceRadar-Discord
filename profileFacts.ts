@@ -19,9 +19,20 @@
 // The whole module, so exports that Vencord removes do not break the build.
 import * as Common from "@webpack/common";
 
+import { type ApiHealth, HealthReport, isFn, proveWorking, reportBroken } from "./apiHealth";
+import { T } from "./i18n";
+
 const DISCORD_EPOCH_MS = 1420070400000n;
 
-const SHOWN_MUTUAL_GUILDS = 8;
+const SHOWN_MUTUAL_GUILDS = 24;
+
+/** One profile request per person per this long, however often the info window is opened. */
+const MUTUAL_CACHE_MS = 10 * 60_000;
+
+const UNKNOWN_USER = 10013;
+
+const fetchedMutual = new Map<string, { ids: string[]; at: number; }>();
+const mutualRequests = new Map<string, Promise<boolean>>();
 
 export interface GuildBadge {
     id: string;
@@ -63,25 +74,86 @@ function badgeOf(guild: any): GuildBadge | null {
 
 const isBadge = (badge: GuildBadge | null): badge is GuildBadge => badge !== null;
 
-function mutualGuilds(userId: string): ProfileFacts["mutualGuilds"] {
+/** Asks Discord for every shared server, the same request its own profile makes, and says whether anything new arrived. */
+export function loadMutualGuilds(userId: string): Promise<boolean> {
+    const known = fetchedMutual.get(userId);
+    if (known && Date.now() - known.at < MUTUAL_CACHE_MS) return Promise.resolve(false);
+
+    const pending = mutualRequests.get(userId);
+    if (pending) return pending;
+
+    const request = (async () => {
+        const common = Common as any;
+        const url = read<string>(() => common.Constants?.Endpoints?.USER_PROFILE?.(userId)) ?? `/users/${userId}/profile`;
+        const { body } = await common.RestAPI.get({
+            url,
+            query: { with_mutual_guilds: true, with_mutual_friends_count: false },
+            oldFormErrors: true
+        });
+
+        if (!Array.isArray(body?.mutual_guilds)) {
+            reportBroken(T.apiMutualGuilds);
+            return false;
+        }
+
+        fetchedMutual.set(userId, { ids: body.mutual_guilds.map((entry: any) => String(entry?.id)), at: Date.now() });
+        proveWorking(T.apiMutualGuilds);
+        return true;
+    })()
+        .catch(error => {
+            // Discord answers Unknown User when you no longer share a server or a friendship.
+            if (error?.status === 404 && error?.body?.code === UNKNOWN_USER) {
+                fetchedMutual.set(userId, { ids: [], at: Date.now() });
+                return true;
+            }
+
+            // A refusal for one person or a rate limit says nothing about the request itself.
+            if (error?.status !== 429 && error?.status !== 403) reportBroken(T.apiMutualGuilds);
+
+            console.warn("[VoiceRadar-Discord] could not load shared servers:", error?.status ?? "", error?.body?.message ?? error);
+            return false;
+        })
+        .finally(() => mutualRequests.delete(userId));
+
+    mutualRequests.set(userId, request);
+    return request;
+}
+
+export function profileProblems(): ApiHealth {
+    return new HealthReport().nice(() => isFn((Common as any).RestAPI?.get), T.apiMutualGuilds);
+}
+
+export function isLoadingMutualGuilds(userId: string): boolean {
+    return mutualRequests.has(userId);
+}
+
+function knownSharedGuilds(userId: string): { ids: string[]; complete: boolean; } | null {
     const common = Common as any;
+
+    const fetched = fetchedMutual.get(userId);
+    if (fetched) return { ids: fetched.ids, complete: true };
 
     const fromProfile = read<any[]>(() => common.UserProfileStore?.getMutualGuilds?.(userId));
     if (Array.isArray(fromProfile)) {
-        const guilds = fromProfile.map(entry => badgeOf(entry?.guild)).filter(isBadge);
-        return { guilds: guilds.slice(0, SHOWN_MUTUAL_GUILDS), count: fromProfile.length, complete: true };
+        return { ids: fromProfile.map(entry => entry?.guild?.id).filter(Boolean).map(String), complete: true };
     }
 
-    return read(() => {
-        const guilds = Object.values<any>(common.GuildStore?.getGuilds?.() ?? {});
-        const shared = guilds.filter(guild => common.GuildMemberStore?.isMember?.(guild.id, userId));
+    return read(() => ({
+        ids: Object.keys(common.GuildStore?.getGuilds?.() ?? {}).filter(id => common.GuildMemberStore?.isMember?.(id, userId)),
+        complete: false
+    }));
+}
 
-        return {
-            guilds: shared.map(badgeOf).filter(isBadge).slice(0, SHOWN_MUTUAL_GUILDS),
-            count: shared.length,
-            complete: false
-        };
-    });
+export function sharedGuildIds(userId: string): string[] {
+    return knownSharedGuilds(userId)?.ids ?? [];
+}
+
+function mutualGuilds(userId: string): ProfileFacts["mutualGuilds"] {
+    const known = knownSharedGuilds(userId);
+    if (!known) return null;
+
+    const guilds = known.ids.map(id => read(() => badgeOf((Common as any).GuildStore?.getGuild?.(id)))).filter(isBadge);
+    return { guilds: guilds.slice(0, SHOWN_MUTUAL_GUILDS), count: known.ids.length, complete: known.complete };
 }
 
 export function getProfileFacts(userId: string, currentGuildId: string | null): ProfileFacts {

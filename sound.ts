@@ -16,15 +16,9 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-import { findByCodeLazy, findByPropsLazy } from "@webpack";
-
-import { isFn, isFound, probe } from "./apiHealth";
-import { CHIME_SOUND, getJoinSound, getJoinSoundVolume } from "./settings";
-
-const playByCode = findByCodeLazy(".playWithListener()", "getSoundpack()");
-
-const soundPlayer = findByPropsLazy("playSound");
-const soundFactory = findByPropsLazy("createSound");
+import { isFn } from "./apiHealth";
+import { playCustomSound } from "./customSound";
+import { ALERT_OFF, CUSTOM_SOUND, getJoinAlert, getJoinSoundVolume } from "./settings";
 
 const CHIME_TONES = [784, 1047];
 const CHIME_TONE_MS = 90;
@@ -34,35 +28,6 @@ const SOUND_GAP_MS = 800;
 let lastPlayedAt = 0;
 
 let chimeContext: AudioContext | null = null;
-
-function discordPlayer(): ((name: string, volume?: number) => void) | null {
-    if (isFound(playByCode)) {
-        return (name, volume) => (playByCode as any)(name, volume);
-    }
-
-    if (probe(() => isFn((soundPlayer as any)?.playSound))) {
-        return (name, volume) => (soundPlayer as any).playSound(name, volume);
-    }
-
-    if (probe(() => isFn((soundFactory as any)?.createSound))) {
-        return name => (soundFactory as any).createSound(name)?.play?.();
-    }
-
-    return null;
-}
-
-function playDiscordSound(name: string, volume: number): boolean {
-    const play = discordPlayer();
-    if (!play) return false;
-
-    try {
-        play(name, volume);
-        return true;
-    } catch (error) {
-        console.warn("[VoiceRadar-Discord] could not play a Discord sound:", error);
-        return false;
-    }
-}
 
 function chimeAudioContext(): AudioContext | null {
     if (chimeContext) return chimeContext;
@@ -112,8 +77,8 @@ function playChime(volume: number): void {
 }
 
 export function playJoinSound(): void {
-    const choice = getJoinSound();
-    if (choice === "off") return;
+    const choice = getJoinAlert();
+    if (choice === ALERT_OFF) return;
 
     const volume = getJoinSoundVolume();
     if (volume <= 0) return;
@@ -122,12 +87,8 @@ export function playJoinSound(): void {
     if (now - lastPlayedAt < SOUND_GAP_MS) return;
     lastPlayedAt = now;
 
-    if (choice === CHIME_SOUND) {
-        playChime(volume);
-        return;
-    }
-
-    if (!playDiscordSound(choice, volume)) playChime(volume);
+    if (choice === CUSTOM_SOUND && playCustomSound(volume)) return;
+    playChime(volume);
 }
 
 export function forgetSoundState(): void {

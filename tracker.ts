@@ -16,7 +16,6 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-import { showNotification } from "@api/Notifications";
 import { FluxDispatcher, UserStore } from "@webpack/common";
 
 import { type ApiHealth, HealthReport, isFn } from "./apiHealth";
@@ -30,6 +29,7 @@ import {
 } from "./channels";
 import { T } from "./i18n";
 import { joinVoiceChannel } from "./join";
+import { announceJoin } from "./joinAlert";
 import { keepUserHere } from "./magnet";
 import { pruneMoveHistory } from "./moveHistory";
 import { ensureUserCachedSpaced, getAvatarUrl, getStoredName, getUserDisplayName } from "./names";
@@ -43,7 +43,6 @@ import {
 } from "./selfMoves";
 import { getAutoJoinCooldownMs, settings } from "./settings";
 import { recordSighting } from "./sightings";
-import { playJoinSound } from "./sound";
 import { watchVoiceState } from "./stickyMute";
 import {
     clearAutoJoin,
@@ -55,6 +54,7 @@ import {
     updateLastChannel
 } from "./store";
 import { toast, ToastType } from "./toast";
+import { startWatch, stopWatch, touchWatch } from "./watchLog";
 
 interface VoiceState {
     userId: string;
@@ -110,30 +110,28 @@ function primeSnapshot() {
     myLastChannelId = getMyChannelId();
 }
 
+/** Nothing is seen while Discord is offline, so the watch stops until it is back. */
+function handleConnectionClosed() {
+    stopWatch();
+}
+
 function handleConnectionOpen() {
     primeSnapshot();
     quietUntil = Date.now() + RECONNECT_QUIET_MS;
+    startWatch(quietUntil);
 }
 
 function notifyJoin(userId: string, channelId: string) {
     const name = getUserDisplayName(userId, getTrackedUser(userId)?.name ?? T.someone);
-    const where = describeChannel(channelId);
-    const style = settings.store.notifyStyle;
 
-    playJoinSound();
-
-    if (style === "toast" || style === "both") {
-        toast(T.notifyToast(name, where), ToastType.MESSAGE);
-    }
-
-    if (style === "notification" || style === "both") {
-        showNotification({
-            title: T.notifyTitle(name),
-            body: where,
-            icon: getAvatarUrl(userId) ?? undefined,
-            onClick: () => openJoinedList?.([userId])
-        });
-    }
+    announceJoin({
+        key: userId,
+        title: T.notifyTitle(name),
+        body: describeChannel(channelId),
+        icon: getAvatarUrl(userId) ?? undefined,
+        onOpen: () => openJoinedList?.([userId]),
+        onJoin: () => void joinVoiceChannel(whereIs(userId))
+    });
 }
 
 function notifyBatchJoined(entries: [string, string][]) {
@@ -144,21 +142,14 @@ function notifyBatchJoined(entries: [string, string][]) {
         names.slice(0, MAX_NAMES_IN_SUMMARY).join(", "),
         Math.max(0, names.length - MAX_NAMES_IN_SUMMARY)
     );
-    const style = settings.store.notifyStyle;
+    const userIds = entries.map(([userId]) => userId);
 
-    playJoinSound();
-
-    if (style === "toast" || style === "both") {
-        toast(T.notifyBatchToast(shown), ToastType.MESSAGE);
-    }
-
-    if (style === "notification" || style === "both") {
-        showNotification({
-            title: T.notifyBatchTitle(names.length),
-            body: shown,
-            onClick: () => openJoinedList?.(entries.map(([userId]) => userId))
-        });
-    }
+    announceJoin({
+        key: userIds.join(","),
+        title: T.notifyBatchTitle(names.length),
+        body: shown,
+        onOpen: () => openJoinedList?.(userIds)
+    });
 }
 
 function flushNotifyBatch() {
@@ -418,20 +409,47 @@ function noteSighting(userId: string, from: string | null, to: string | null) {
     const channelId = to ?? from;
     if (!channelId) return;
 
+    const mine = getMyChannelId();
+
     try {
         recordSighting(userId, {
             kind: !to ? "left" : from ? "moved" : "joined",
             channelId,
             channelLabel: channelLabel(getChannelInfo(channelId)),
-            withYou: channelId === getMyChannelId()
+            withYou: channelId === mine,
+            ...(to && from && from === mine ? { fromYou: true } : {}),
+            ...(to && from ? { fromLabel: channelLabel(getChannelInfo(from)) } : {})
         });
     } catch (error) {
         console.warn("[VoiceRadar-Discord] could not note a sighting:", error);
     }
 }
 
+/** Your own move goes into the journal of everybody on the list who sits in that channel. */
+function noteMySighting(myId: string, from: string | null, to: string | null) {
+    if (Date.now() < quietUntil) return;
+
+    const record = (channelId: string, kind: "you-joined" | "you-left") => {
+        const info = getChannelInfo(channelId);
+        const label = channelLabel(info);
+
+        for (const userId of info.participantIds) {
+            if (userId === myId || !getTrackedUser(userId)) continue;
+            recordSighting(userId, { kind, channelId, channelLabel: label, withYou: kind === "you-joined" });
+        }
+    };
+
+    try {
+        if (from) record(from, "you-left");
+        if (to) record(to, "you-joined");
+    } catch (error) {
+        console.warn("[VoiceRadar-Discord] could not note your own move:", error);
+    }
+}
+
 function processVoiceStates({ voiceStates }: { voiceStates: VoiceState[]; }) {
     lastEventAt = Date.now();
+    touchWatch(lastEventAt);
 
     const me = UserStore.getCurrentUser();
     if (!me || !Array.isArray(voiceStates)) return;
@@ -451,18 +469,20 @@ function processVoiceStates({ voiceStates }: { voiceStates: VoiceState[]; }) {
         // Mute, deafen and video changes also land here.
         if (channelId === knownOld) continue;
 
-        if (userId !== me.id) noteSighting(userId, knownOld, channelId);
-
         if (userId === me.id) {
             if (channelId) {
                 rememberChannelMates(channelId);
                 const held = getAutoPullTarget();
                 if (held) keepUserHere(held.id);
             }
+            noteMySighting(me.id, knownOld, channelId);
             continue;
         }
 
         if (channelId) handleUserJoined(userId, channelId);
+
+        // After the join is handled, so somebody new who sat down with you is already on the list.
+        noteSighting(userId, knownOld, channelId);
     }
 
     noteMyMove();
@@ -494,9 +514,11 @@ export function startTracking() {
     primeSnapshot();
     startedAt = Date.now();
     quietUntil = Date.now() + RECONNECT_QUIET_MS;
+    startWatch(quietUntil);
 
     FluxDispatcher.subscribe("VOICE_STATE_UPDATES", handleVoiceStateUpdates);
     FluxDispatcher.subscribe("CONNECTION_OPEN", handleConnectionOpen);
+    FluxDispatcher.subscribe("CONNECTION_CLOSED", handleConnectionClosed);
     startWatchingMyChoices();
 
     sweepCurrentChannel();
@@ -506,7 +528,9 @@ export function startTracking() {
 function teardownTracking() {
     FluxDispatcher.unsubscribe("VOICE_STATE_UPDATES", handleVoiceStateUpdates);
     FluxDispatcher.unsubscribe("CONNECTION_OPEN", handleConnectionOpen);
+    FluxDispatcher.unsubscribe("CONNECTION_CLOSED", handleConnectionClosed);
     stopWatchingMyChoices();
+    stopWatch();
 
     if (sweepInterval) {
         clearInterval(sweepInterval);

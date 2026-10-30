@@ -258,6 +258,23 @@ export function InfoIcon({ size = 14, className }: IconProps) {
     );
 }
 
+export function ShieldIcon({ size = 18, className }: IconProps) {
+    return (
+        <svg {...base(size)} className={className}>
+            <path d="M12 3 5 6v5.5c0 4.2 2.9 8 7 9.5 4.1-1.5 7-5.3 7-9.5V6l-7-3Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+            <path d="m9 12 2 2 4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+    );
+}
+
+export function ChevronDownIcon({ size = 14, className }: IconProps) {
+    return (
+        <svg {...base(size)} className={className}>
+            <path d="m6.5 9.5 5.5 5.5 5.5-5.5" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+    );
+}
+
 export function SearchIcon({ size = 16, className }: IconProps) {
     return (
         <svg {...base(size)} className={className}>
@@ -289,6 +306,15 @@ export function KeyboardIcon({ size = 16, className }: IconProps) {
         <svg {...base(size)} className={className}>
             <rect x="2.5" y="6" width="19" height="12" rx="2.5" stroke="currentColor" strokeWidth="1.8" />
             <path d="M6.5 10h1M10 10h1M13.5 10h1M17 10h.5M8 14h8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        </svg>
+    );
+}
+
+export function ExternalIcon({ size = 16, className }: IconProps) {
+    return (
+        <svg {...base(size)} className={className}>
+            <path d="M14 4h6v6M20 4l-9 9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
         </svg>
     );
 }

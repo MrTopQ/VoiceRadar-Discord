@@ -22,10 +22,12 @@ import { makeRange, OptionType } from "@utils/types";
 import { parseHotkey } from "./hotkey";
 import { AUTO_LANGUAGE, LANGUAGE_CODES, LANGUAGE_LABELS, T } from "./i18n";
 import type { BatchPace } from "./moveBatch";
+import { renderCustomSoundPicker, renderJoinTest } from "./settingsRows";
 
 export const DEFAULT_HISTORY_LIMIT = 15;
 export const MIN_HISTORY_LIMIT = 5;
-export const MAX_HISTORY_LIMIT = 100;
+export const MAX_HISTORY_LIMIT = 200;
+export const DEFAULT_LOOKUP_URL = "https://discord-sensor.com/members/{id}";
 export const DEFAULT_HOTKEY = "Alt+2";
 
 export type MovePace = "careful" | "fast" | "instant";
@@ -39,9 +41,14 @@ export const MOVE_PACES: Record<MovePace, BatchPace> = {
 export const DEFAULT_MOVE_PACE: MovePace = "fast";
 
 export const CHIME_SOUND = "chime";
-export const DEFAULT_JOIN_SOUND = CHIME_SOUND;
-export const JOIN_SOUNDS = ["off", CHIME_SOUND, "user_join", "message1"];
+export const CUSTOM_SOUND = "custom";
+export const ALERT_OFF = "off";
+export const DEFAULT_JOIN_ALERT = CHIME_SOUND;
+const JOIN_ALERTS = [CHIME_SOUND, CUSTOM_SOUND, ALERT_OFF];
 export const DEFAULT_JOIN_SOUND_VOLUME = 60;
+
+export const DEFAULT_RECENT_MARK_MINUTES = 1;
+export const MAX_RECENT_MARK_MINUTES = 5;
 
 export const DEFAULT_WATCHED_SERVERS = 100;
 export const MIN_WATCHED_SERVERS = 10;
@@ -66,7 +73,7 @@ export const settings = definePluginSettings({
         get description() {
             return T.settingHistoryLimit;
         },
-        markers: makeRange(MIN_HISTORY_LIMIT, MAX_HISTORY_LIMIT, 5),
+        markers: [MIN_HISTORY_LIMIT, ...makeRange(25, MAX_HISTORY_LIMIT, 25)],
         default: DEFAULT_HISTORY_LIMIT,
         stickToMarkers: false
     },
@@ -100,41 +107,53 @@ export const settings = definePluginSettings({
         },
         default: 5
     },
-    notifyStyle: {
+    joinAlert: {
         type: OptionType.SELECT,
         get description() {
-            return T.settingNotifyStyle;
+            return T.settingJoinAlert;
         },
         get options() {
             return [
-                { label: T.notifyStyleNotification, value: "notification", default: true },
-                { label: T.notifyStyleToast, value: "toast" },
-                { label: T.notifyStyleBoth, value: "both" }
+                { label: T.joinAlertChime, value: CHIME_SOUND, default: true },
+                { label: T.joinAlertCustom, value: CUSTOM_SOUND },
+                { label: T.joinAlertOff, value: ALERT_OFF }
             ];
         }
     },
-    joinSound: {
-        type: OptionType.SELECT,
-        get description() {
-            return T.settingJoinSound;
+    joinSoundFile: {
+        type: OptionType.COMPONENT,
+        hidden() {
+            return getJoinAlert() !== CUSTOM_SOUND;
         },
-        get options() {
-            return [
-                { label: T.joinSoundChime, value: CHIME_SOUND, default: true },
-                { label: T.joinSoundJoin, value: "user_join" },
-                { label: T.joinSoundPing, value: "message1" },
-                { label: T.joinSoundOff, value: "off" }
-            ];
-        }
+        component: () => renderCustomSoundPicker()
     },
     joinSoundVolume: {
         type: OptionType.SLIDER,
+        hidden() {
+            return getJoinAlert() === ALERT_OFF;
+        },
         get description() {
             return T.settingJoinSoundVolume;
         },
         markers: makeRange(0, 100, 10),
         default: DEFAULT_JOIN_SOUND_VOLUME,
         stickToMarkers: false
+    },
+    joinTest: {
+        type: OptionType.COMPONENT,
+        hidden() {
+            return getJoinAlert() === ALERT_OFF;
+        },
+        component: () => renderJoinTest()
+    },
+    recentMarkMinutes: {
+        type: OptionType.SLIDER,
+        get description() {
+            return T.settingRecentMarkMinutes;
+        },
+        markers: makeRange(1, MAX_RECENT_MARK_MINUTES, 1),
+        default: DEFAULT_RECENT_MARK_MINUTES,
+        stickToMarkers: true
     },
     queueForFullChannels: {
         type: OptionType.BOOLEAN,
@@ -187,6 +206,13 @@ export const settings = definePluginSettings({
         },
         default: false
     },
+    lookupUrl: {
+        type: OptionType.STRING,
+        get description() {
+            return T.settingLookupUrl;
+        },
+        default: DEFAULT_LOOKUP_URL
+    },
     showPanelButton: {
         type: OptionType.BOOLEAN,
         get description() {
@@ -211,9 +237,27 @@ export function getWatchedServerLimit(): number {
     return Math.min(MAX_WATCHED_SERVERS, Math.max(MIN_WATCHED_SERVERS, Math.floor(raw)));
 }
 
-export function getJoinSound(): string {
-    const raw = String(settings.store.joinSound ?? DEFAULT_JOIN_SOUND);
-    return JOIN_SOUNDS.includes(raw) ? raw : DEFAULT_JOIN_SOUND;
+/** The sound and the notification used to be two settings, Discord's own sounds among the choices. */
+export function migrateJoinAlert() {
+    const store = settings.store as any;
+    if (store.joinSound === undefined && store.notifyStyle === undefined) return;
+
+    if (store.joinSound === ALERT_OFF) store.joinAlert = ALERT_OFF;
+    else if (store.joinSound === CUSTOM_SOUND) store.joinAlert = CUSTOM_SOUND;
+
+    delete store.joinSound;
+    delete store.notifyStyle;
+}
+
+export function getJoinAlert(): string {
+    const raw = String(settings.store.joinAlert ?? DEFAULT_JOIN_ALERT);
+    return JOIN_ALERTS.includes(raw) ? raw : DEFAULT_JOIN_ALERT;
+}
+
+export function getRecentMarkMs(): number {
+    const raw = Number(settings.store.recentMarkMinutes);
+    const minutes = Number.isFinite(raw) ? Math.min(MAX_RECENT_MARK_MINUTES, Math.max(1, Math.round(raw))) : DEFAULT_RECENT_MARK_MINUTES;
+    return minutes * 60_000;
 }
 
 export function getJoinSoundVolume(): number {

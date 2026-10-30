@@ -58,6 +58,10 @@ export function closeWindow(name: string, { animate = false } = {}) {
     if (entry.modalKey) closeModal(entry.modalKey);
 }
 
+export function closeAllWindows() {
+    for (const name of [...open.keys()]) closeWindow(name, { animate: true });
+}
+
 export function openWindow(name: string, options: WindowOptions): boolean {
     closeWindow(name);
 

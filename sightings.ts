@@ -19,20 +19,29 @@
 import { DataStore } from "@api/index";
 
 import { isTracked } from "./store";
+import { watchedThrough,type WatchSpan } from "./watchLog";
 
-export type SightingKind = "joined" | "moved" | "left";
+/** The you- kinds are your own moves into and out of the person's channel. */
+export type SightingKind = "joined" | "moved" | "left" | "you-joined" | "you-left";
+
+const KINDS: SightingKind[] = ["joined", "moved", "left", "you-joined", "you-left"];
 
 export interface Sighting {
     at: number;
     kind: SightingKind;
     channelId: string | null;
     channelLabel: string | null;
+    /** For a leave it means they left your channel. */
     withYou: boolean;
+    /** They moved out of your channel. */
+    fromYou?: boolean;
+    /** Where a move came from, missing on lines older than this field. */
+    fromLabel?: string | null;
 }
 
 const DATASTORE_KEY = "VoiceRadar-Discord_Sightings";
 
-export const MAX_SIGHTINGS_PER_PERSON = 60;
+export const MAX_SIGHTINGS_PER_PERSON = 80;
 
 const SAVE_DEBOUNCE_MS = 2000;
 
@@ -46,7 +55,7 @@ let generation = 0;
 function isSighting(value: any): value is Sighting {
     return value != null
         && Number.isFinite(value.at)
-        && (value.kind === "joined" || value.kind === "moved" || value.kind === "left");
+        && KINDS.includes(value.kind);
 }
 
 function prunedForSaving(): Record<string, Sighting[]> {
@@ -109,6 +118,50 @@ export function recordSighting(userId: string, sighting: Omit<Sighting, "at"> & 
 
 export function getSightings(userId: string): Sighting[] {
     return [...(log.get(userId) ?? [])].reverse();
+}
+
+export function isTheirMove(line: Sighting): boolean {
+    return line.kind === "joined" || line.kind === "moved";
+}
+
+export function startsTogether(line: Sighting): boolean {
+    return line.kind === "you-joined" || (isTheirMove(line) && line.withYou);
+}
+
+export function endsTogether(line: Sighting): boolean {
+    return line.kind === "you-left" || (line.kind === "left" && line.withYou) || (line.kind === "moved" && line.fromYou === true);
+}
+
+/** How long you sat together up to this line, for lines that are newest first, and only when the plugin saw all of it. */
+export function togetherBefore(lines: Sighting[], index: number, watched?: WatchSpan[]): number | null {
+    const end = lines[index];
+    if (!end || !endsTogether(end)) return null;
+
+    for (let older = index + 1; older < lines.length; older++) {
+        const line = lines[older];
+        if (startsTogether(line)) return !watched || watchedThrough(watched, line.at, end.at) ? end.at - line.at : null;
+        if (endsTogether(line)) return null;
+    }
+
+    return null;
+}
+
+export type RecentChange = { kind: "joined" | "left"; at: number; };
+
+/** The newest time somebody came into your channel or left it inside the window, your own moves aside. */
+export function getRecentChange(userId: string, withinMs: number, now = Date.now()): RecentChange | null {
+    const lines = log.get(userId) ?? [];
+
+    for (let index = lines.length - 1; index >= 0; index--) {
+        const line = lines[index];
+        if (now - line.at > withinMs) return null;
+        if (line.kind === "you-joined" || line.kind === "you-left") continue;
+
+        if (startsTogether(line)) return { kind: "joined", at: line.at };
+        if (endsTogether(line)) return { kind: "left", at: line.at };
+    }
+
+    return null;
 }
 
 /** Only when leaving was the last thing seen, otherwise its time is unknown. */

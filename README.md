@@ -21,11 +21,21 @@ Vencord plugin. Remembers everyone you shared a voice channel with and shows whe
   voice altogether, leaves that channel alone until they move somewhere else. Somebody else
   disconnecting you or moving you out is undone instead, up to six times a minute.
 - **Queue.** Holds your place in a full channel until you get in or cancel.
-- **History.** A button under each name opens where that person has been seen going: every join, move
-  and leave with the time, the last time they sat with you, and how often they showed up this week.
-- **Notifications.** A bell per person, naming the channel. Several joins collapse into one. A click
-  opens their row and brings Discord forward. A sound goes with it, which is what reaches you over a
-  fullscreen game, where Windows swallows the notification itself.
+- **Info.** A button under each name, and an entry in the right-click menu, opens what is known
+  about the person. Every join, move and leave with the time, your own joins and leaves next to
+  theirs with how long you sat together, how often they showed up this week, when the account was made and the servers you share. A button in
+  its header opens the person on a lookup site, discord-sensor.com unless you set another, in a
+  window of its own inside Discord. You sign in to the site there once and it remembers you. The
+  plugin reads nothing from the site, it only shows the page when you click.
+  <sub>The log keeps the last 80 entries per person, only on your computer.</sub>
+- **Mod View.** A double button on the row, in the info window and in the right-click menu opens
+  Discord's own Mod View panel for the person. The shield half picks the server they sit on, the
+  arrow half lists your other shared servers. Discord shows that panel only to moderators, so the
+  button appears where you have the rights, or everywhere once Vencord's ShowHiddenThings plugin is on.
+- **Notifications.** A bell per person, naming the channel. Several joins collapse into one. A card
+  in the corner of Discord shows who joined, with a Join button, and waits until you look at Discord,
+  since Windows hides its own notification during a game. A sound goes with it, the plugin chime
+  or a file of your own, and a button in the settings shows how it all looks.
 - **Stream preview.** `LIVE` badge, thumbnail on hover, full size on click.
 - **Search.** Nickname, display name or username, and a switch between everybody and only whoever
   is in voice this second. Typing anywhere in the window goes into the search, and the first `Esc`
@@ -68,20 +78,23 @@ Eighteen, in panel order. Vencord prints a longer description beside each.
 | Setting | Control | Default | What it does |
 |---|---|---|---|
 | Language | dropdown | Auto | Auto (follow Discord), English, Русский |
-| People the list keeps | slider, 5 to 100 | 15 | Pinned people take slots too |
+| People the list keeps | slider, 5 to 200 | 15 | Pinned people take slots too |
 | Hotkey | text | `Alt+2` | Opens and closes the window |
 | Mute mic on auto-join | switch | off | Mutes your mic on every join the plugin makes |
 | Only follow when idle | switch | off | Never pulls you out of a call |
 | Auto-join cooldown | seconds | 5 | Gap between two auto-joins, clamped to 2s and 5min |
-| Notification style | dropdown | Notification | Corner notification, Toast, or Both |
-| Join sound | dropdown | Plugin chime | Also Discord's own join blip or ping, or off. Heard over a fullscreen game |
+| Join alert | dropdown | With the plugin chime | A card in Discord plus a Windows notification while Discord is in the background, with the plugin chime or your own sound, or off |
+| Your own sound | file | none | Shown for the own-sound choice. mp3, ogg, wav or m4a up to 2 MB, cut at 5 seconds |
 | Join sound volume | slider, 0 to 100 | 60 | How loud that sound is |
+| Test | button | | Shows the card and plays the sound, as if somebody joined |
+| Highlight joins and leaves | slider, 1 to 5 min | 1 | How long a row stays marked after the person joined or left your voice channel |
 | Queue for full channels | switch | on | Auto-join only. Queueing by hand works either way |
 | Track automatically | switch | on | Remembers everyone you share a voice channel with |
 | Servers watched for voice | slider, 10 to 200 | 100 | Discord only sends voice states for subscribed servers, so joins past this number go unseen. Your people's servers come first, and the window says how many did not fit |
 | Keep timers awake | switch | on | Holds Discord's timers at normal pace in the background, so a join reaches you in seconds instead of minutes |
 | Group move speed | dropdown | Fast | Careful sends one move at a time, Fast four, Instant eight. Every move is a line in the server's audit log |
 | Moderator mode | switch | off | Adds pull, undo, magnet and sticky mute where you hold the permission |
+| Lookup site | text | discord-sensor.com/members/{id} | The info window's button, {id} becomes the person's ID, empty removes it |
 | Panel button | switch | on | Goes away at once, needs a restart to come back |
 | Hotkey system wide | switch | off | The hotkey fires while Discord sits in the background and brings it up. Needs a full restart |
 
@@ -110,4 +123,4 @@ GPL-3.0. See [LICENSE](LICENSE).
 
 ![Right-Click Menu](screenshots/context-menu.png)
 
-![History](screenshots/history.png)
+![Info](screenshots/history.png)

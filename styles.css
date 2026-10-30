@@ -7,7 +7,9 @@
 .vr-empty,
 .vr-row,
 .vr-dim,
-.vr-badge {
+.vr-badge,
+.vr-setting,
+.vr-cards {
     --vr-bg: var(--background-base-lower, var(--background-tertiary, #1e1f22));
     --vr-raised: var(--background-base-low, var(--background-secondary, #232428));
     --vr-card: var(--background-surface-high, var(--background-secondary-alt, #2b2d31));
@@ -474,6 +476,54 @@
     color: var(--vr-brand-text);
 }
 
+.vr-chip.vr-chip-off,
+.vr-chip.vr-chip-off:hover {
+    background: var(--vr-mod);
+    color: var(--vr-text-muted);
+    opacity: 0.6;
+    cursor: default;
+}
+
+.vr-chip.vr-chip-off:active {
+    transform: none;
+}
+
+.vr-chip-split {
+    display: inline-flex;
+    flex: 0 0 auto;
+}
+
+.vr-chip.vr-chip-split-main {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.vr-chip.vr-chip-split-more {
+    margin-left: -1px;
+    padding: 0 8px;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    color: var(--vr-text-muted);
+}
+
+.vr-chip.vr-chip-split-more:hover {
+    color: var(--vr-text-strong);
+}
+
+/* Drawn inside Discord's own menu, outside the plugin's colour tokens. */
+.vr-menu-guild-initials {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+    background: var(--brand-500, #5865f2);
+    color: #fff;
+    font-size: 8px;
+    font-weight: 700;
+}
+
 .vr-chip.vr-chip-amber {
     border-color: color-mix(in srgb, var(--vr-amber) 45%, transparent);
     background: color-mix(in srgb, var(--vr-amber) 12%, transparent);
@@ -753,4 +803,238 @@
     color: var(--vr-text-muted);
     font-size: 11.5px;
     white-space: normal;
+}
+
+/* ── own rows in the plugin settings ────────────────────────────────────────────────────────── */
+
+.vr-setting {
+    display: flex;
+    flex-direction: column;
+}
+
+.vr-setting-title {
+    color: var(--vr-text-strong);
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 1.25;
+}
+
+.vr-setting-hint {
+    margin-top: 4px;
+    color: var(--vr-text-muted);
+    font-size: 14px;
+    line-height: 1.3;
+}
+
+.vr-setting-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.vr-setting-file {
+    flex: 1 1 180px;
+    min-width: 0;
+    height: 34px;
+    padding: 0 12px;
+    border: 1px solid var(--vr-border);
+    border-radius: 10px;
+    background: var(--vr-raised);
+    color: var(--vr-text);
+    font-size: 14px;
+    line-height: 34px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.vr-setting-file-empty {
+    color: var(--vr-text-muted);
+}
+
+/* ── the channel the radar points at in Discord's own list ──────────────────────────────────── */
+
+.vr-channel-spotlight {
+    border-radius: 8px;
+    box-shadow: 0 0 0 2px var(--brand-500, #5865f2);
+    animation: vr-channel-spotlight 0.8s ease-in-out 4;
+}
+
+@keyframes vr-channel-spotlight {
+    50% {
+        background-color: color-mix(in srgb, var(--brand-500, #5865f2) 22%, transparent);
+        box-shadow: 0 0 0 2px var(--brand-500, #5865f2), 0 0 16px 2px color-mix(in srgb, var(--brand-500, #5865f2) 55%, transparent);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .vr-channel-spotlight {
+        animation: none;
+        background-color: color-mix(in srgb, var(--brand-500, #5865f2) 18%, transparent);
+    }
+}
+
+/* ── join cards ─────────────────────────────────────────────────────────────────────────────── */
+
+/* Above Discord's layers, like the hints, so the card also shows over the settings. */
+.vr-cards {
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    z-index: 1003;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: min(360px, calc(100vw - 32px));
+    pointer-events: none;
+}
+
+.vr-card {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 8px 12px 10px;
+    border: 1px solid var(--vr-border-strong);
+    border-radius: 14px;
+    background: var(--vr-floating);
+    box-shadow: var(--vr-shadow);
+    color: var(--vr-text);
+    font-family: var(--font-primary, "gg sans", "Noto Sans", sans-serif);
+    overflow: hidden;
+    pointer-events: auto;
+    animation: vr-card-in 0.22s var(--vr-ease);
+}
+
+@keyframes vr-card-in {
+    from {
+        opacity: 0;
+        transform: translateY(10px) scale(0.98);
+    }
+}
+
+.vr-card-main {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    padding: 2px;
+    border: none;
+    border-radius: 10px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.vr-card-main:focus-visible,
+.vr-card-close:focus-visible {
+    outline: 2px solid var(--vr-brand);
+    outline-offset: 1px;
+}
+
+.vr-card-avatar {
+    flex: 0 0 40px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    box-shadow: 0 0 0 2px var(--vr-green);
+}
+
+.vr-card-avatar-empty {
+    display: grid;
+    place-items: center;
+    background: var(--vr-brand-soft);
+    color: var(--vr-brand-text);
+    box-shadow: none;
+}
+
+.vr-card-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.vr-card-title,
+.vr-card-body {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.vr-card-title {
+    color: var(--vr-text-strong);
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.vr-card-body {
+    color: var(--vr-text-muted);
+    font-size: 13px;
+}
+
+.vr-card .vr-card-join {
+    flex: 0 0 auto;
+    height: 30px;
+    padding: 0 12px;
+    border-color: color-mix(in srgb, var(--vr-green) 45%, transparent);
+    background: color-mix(in srgb, var(--vr-green) 16%, transparent);
+    color: var(--vr-green-text);
+}
+
+.vr-card .vr-card-join:hover {
+    background: color-mix(in srgb, var(--vr-green) 26%, transparent);
+    color: var(--vr-green-text);
+}
+
+.vr-card-close {
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--vr-text-muted);
+    cursor: pointer;
+}
+
+.vr-card-close:hover {
+    background: var(--vr-mod);
+    color: var(--vr-text-strong);
+}
+
+.vr-card-timer {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    background: var(--vr-green);
+    transform-origin: left;
+    animation: vr-card-timer linear forwards;
+}
+
+.vr-card-timer-paused {
+    animation-play-state: paused;
+}
+
+@keyframes vr-card-timer {
+    to {
+        transform: scaleX(0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .vr-card {
+        animation: none;
+    }
 }

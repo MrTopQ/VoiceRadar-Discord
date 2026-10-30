@@ -19,19 +19,26 @@
 import { useForceUpdater } from "@utils/react";
 import { FluxDispatcher, React, useEffect } from "@webpack/common";
 
-import { channelLabel, getVoiceInfo, openChannel, type VoiceInfo } from "../channels";
+import { channelLabel, getVoiceInfo, type VoiceInfo } from "../channels";
+import { spotlightChannel } from "../channelSpotlight";
 import { T } from "../i18n";
+import { moveLabel } from "../journalTimeline";
+import { lookupLink, openLookup } from "../lookup";
+import { canOpenModView, pickModViewGuild } from "../modView";
 import { DEFAULT_AVATAR_URL, getAvatarUrl, getUserDisplayName } from "../names";
 import { getPresenceInfo, type PresenceInfo } from "../presence";
-import { getProfileFacts, type GuildBadge, guildIconUrl, guildInitials, type ProfileFacts } from "../profileFacts";
-import { getSightings, type Sighting } from "../sightings";
+import { getProfileFacts, type GuildBadge, guildIconUrl, guildInitials, isLoadingMutualGuilds, loadMutualGuilds, type ProfileFacts } from "../profileFacts";
+import { getSightings, isTheirMove, type Sighting, startsTogether, togetherBefore } from "../sightings";
 import { getTrackedUser, type TrackedUser } from "../store";
 import { throttle } from "../throttle";
 import { formatRelativeTime } from "../time";
 import { toast, ToastType } from "../toast";
+import { gapBetween, getWatchSpans, watchedThrough,type WatchSpan } from "../watchLog";
 import { cl, StatusDot } from "./common";
-import { SpeakerIcon } from "./icons";
-import { closeWindow, openWindow, WindowHead } from "./Window";
+import { Hint } from "./Hint";
+import { ChevronDownIcon, ExternalIcon, ShieldIcon, SpeakerIcon } from "./icons";
+import { openModViewServerMenu, showModView } from "./ModViewMenu";
+import { closeAllWindows, closeWindow, openWindow, WindowHead } from "./Window";
 
 const INFO_WINDOW = "person-info";
 const REDRAW_THROTTLE_MS = 400;
@@ -73,17 +80,26 @@ const STATUS_LABELS: Record<string, () => string> = {
 const KIND_LABELS: Record<Sighting["kind"], () => string> = {
     joined: () => T.infoKindJoined,
     moved: () => T.infoKindMoved,
-    left: () => T.infoKindLeft
+    left: () => T.infoKindLeft,
+    "you-joined": () => T.infoKindYouJoined,
+    "you-left": () => T.infoKindYouLeft
 };
 
+/** Only when the plugin saw them sit there all along, since a closed Discord could have missed them leaving and coming back. */
 function inChannelSince(lines: Sighting[], channelId: string): number | null {
-    const latest = lines.find(line => line.kind !== "left");
-    return latest?.channelId === channelId ? latest.at : null;
+    const latest = lines.find(isTheirMove);
+    if (latest?.channelId !== channelId) return null;
+    return watchedThrough(getWatchSpans(), latest.at, Date.now()) ? latest.at : null;
 }
 
 function openChannelOrSay(channelId: string | null) {
-    if (channelId) openChannel(channelId);
-    else toast(T.noChannelAccess, ToastType.FAILURE);
+    if (!channelId) {
+        toast(T.noChannelAccess, ToastType.FAILURE);
+        return;
+    }
+
+    closeAllWindows();
+    void spotlightChannel(channelId);
 }
 
 function copyId(userId: string) {
@@ -162,22 +178,47 @@ function friendValue(facts: ProfileFacts): string | null {
     return facts.isFriend ? T.infoYes : T.infoNo;
 }
 
-function GuildChip({ guild }: { guild: GuildBadge; }) {
+/** With a person given, a server where Mod View can open becomes a button for it. */
+function GuildChip({ guild, userId }: { guild: GuildBadge; userId?: string; }) {
     const icon = guildIconUrl(guild);
-
-    return (
-        <span className={cl("guild-chip")} title={guild.name}>
+    const content = (
+        <>
             {icon
                 ? <img className={cl("guild-icon")} src={icon} alt="" />
                 : <span className={cl("guild-icon") + " " + cl("guild-icon-initials")}>{guildInitials(guild.name)}</span>}
             <span className={cl("guild-chip-name")}>{guild.name}</span>
-        </span>
+        </>
+    );
+
+    if (!userId || !canOpenModView(guild.id)) {
+        return <span className={cl("guild-chip")} title={guild.name}>{content}</span>;
+    }
+
+    return (
+        <Hint text={T.modViewGuildHint(guild.name)}>
+            {hintProps => (
+                <span
+                    {...hintProps}
+                    className={cl("guild-chip") + " " + cl("guild-chip-click")}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => showModView(userId, guild.id)}
+                    onKeyDown={event => {
+                        if (event.key !== "Enter" && event.key !== " ") return;
+                        event.preventDefault();
+                        showModView(userId, guild.id);
+                    }}
+                >
+                    {content}
+                </span>
+            )}
+        </Hint>
     );
 }
 
-function MutualTile({ facts }: { facts: ProfileFacts; }) {
+function MutualTile({ userId, facts, loading }: { userId: string; facts: ProfileFacts; loading: boolean; }) {
     const mutual = facts.mutualGuilds;
-    if (!mutual || (!mutual.count && !mutual.complete)) return null;
+    if (!mutual || (!mutual.count && !mutual.complete && !loading)) return null;
 
     const rest = mutual.count - mutual.guilds.length;
     const count = mutual.complete ? String(mutual.count) : T.infoAtLeast(mutual.count);
@@ -188,12 +229,12 @@ function MutualTile({ facts }: { facts: ProfileFacts; }) {
             value={mutual.count
                 ? (
                     <span className={cl("guild-chips")}>
-                        {mutual.guilds.map(guild => <GuildChip key={guild.id} guild={guild} />)}
+                        {mutual.guilds.map(guild => <GuildChip key={guild.id} guild={guild} userId={userId} />)}
                         {rest > 0 && <span className={cl("guild-chip") + " " + cl("guild-chip-more")}>+{rest}</span>}
                     </span>
                 )
                 : T.infoNo}
-            sub={mutual.complete ? undefined : T.infoMutualPartial}
+            sub={mutual.complete ? undefined : loading ? T.infoMutualLoading : T.infoMutualPartial}
             wide
         />
     );
@@ -208,7 +249,7 @@ function Tiles({ userId, user, presence, lines, guildId }: {
 }) {
     const facts = getProfileFacts(userId, guildId);
     const friend = friendValue(facts);
-    const joinsThisWeek = lines.filter(line => line.kind !== "left" && Date.now() - line.at < WEEK_MS).length;
+    const joinsThisWeek = lines.filter(line => isTheirMove(line) && Date.now() - line.at < WEEK_MS).length;
 
     return (
         <div className={cl("info-grid")}>
@@ -228,18 +269,37 @@ function Tiles({ userId, user, presence, lines, guildId }: {
             {facts.currentGuild && facts.joinedCurrentGuildAt != null && (
                 <Tile
                     label={T.infoJoinedGuild}
-                    value={<GuildChip guild={facts.currentGuild} />}
+                    value={<GuildChip guild={facts.currentGuild} userId={userId} />}
                     sub={T.infoJoinedGuildSince(formatDate(facts.joinedCurrentGuildAt), formatAge(facts.joinedCurrentGuildAt))}
                 />
             )}
             {friend && <Tile label={T.infoFriend} value={friend} />}
 
-            <MutualTile facts={facts} />
+            <MutualTile userId={userId} facts={facts} loading={isLoadingMutualGuilds(userId)} />
         </div>
     );
 }
 
-function SightingLine({ line }: { line: Sighting; }) {
+function TogetherBadge({ line, together }: { line: Sighting; together: number | null; }) {
+    if (together != null) {
+        // A move names the new channel, while the time together was spent in the one before it.
+        const text = line.kind === "moved" ? T.infoTogetherBefore : T.infoTogether;
+        return <span className={cl("badge") + " " + cl("badge-here")}>{text(Math.floor(together / 60_000))}</span>;
+    }
+    if (line.kind !== "you-joined" && startsTogether(line)) return <span className={cl("badge") + " " + cl("badge-here")}>{T.infoCameToYou}</span>;
+    return null;
+}
+
+function GapLine({ gap }: { gap: WatchSpan; }) {
+    const sameDay = new Date(gap.start).toDateString() === new Date(gap.end).toDateString();
+    const stamp = (at: number) => sameDay ? formatTime(at) : `${formatDate(at)} ${formatTime(at)}`;
+
+    return <div className={cl("info-gap")}>{T.infoGap(stamp(gap.start), stamp(gap.end))}</div>;
+}
+
+function SightingLine({ line, together }: { line: Sighting; together: number | null; }) {
+    const where = line.channelLabel ?? T.unknownChannel;
+
     return (
         <div className={cl("info-line")}>
             <span className={cl("info-dot") + " " + cl("info-dot-" + line.kind)} />
@@ -253,9 +313,9 @@ function SightingLine({ line }: { line: Sighting; }) {
                 tabIndex={0}
                 onClick={() => openChannelOrSay(line.channelId)}
             >
-                {line.channelLabel ?? T.unknownChannel}
+                {line.kind === "moved" ? moveLabel(line.fromLabel, where) : where}
             </span>
-            {line.withYou && <span className={cl("badge") + " " + cl("badge-here")}>{T.badgeWithYou}</span>}
+            <TogetherBadge line={line} together={together} />
         </div>
     );
 }
@@ -270,21 +330,34 @@ function Journal({ lines }: { lines: Sighting[]; }) {
         );
     }
 
-    const days: { heading: string; lines: Sighting[]; }[] = [];
-    for (const line of lines) {
-        const heading = dayHeading(line.at);
-        const last = days[days.length - 1];
+    const watched = getWatchSpans();
 
-        if (last?.heading === heading) last.lines.push(line);
-        else days.push({ heading, lines: [line] });
-    }
+    const days: { start: number; entries: { line: Sighting; together: number | null; gap: WatchSpan | null; }[]; }[] = [];
+    lines.forEach((line, index) => {
+        const start = new Date(line.at).setHours(0, 0, 0, 0);
+        const last = days[days.length - 1];
+        const older = lines[index + 1];
+        const entry = {
+            line,
+            together: togetherBefore(lines, index, watched),
+            gap: older ? gapBetween(watched, older.at, line.at) : null
+        };
+
+        if (last?.start === start) last.entries.push(entry);
+        else days.push({ start, entries: [entry] });
+    });
 
     return (
         <div className={cl("info-log")}>
             {days.map(day => (
-                <div key={day.heading} className={cl("info-day")}>
-                    <div className={cl("info-day-heading")}>{day.heading}</div>
-                    {day.lines.map(line => <SightingLine key={`${line.at}-${line.kind}`} line={line} />)}
+                <div key={day.start} className={cl("info-day")}>
+                    <div className={cl("info-day-heading")}>{dayHeading(day.start)}</div>
+                    {day.entries.map(({ line, together, gap }) => (
+                        <React.Fragment key={`${line.at}-${line.kind}`}>
+                            <SightingLine line={line} together={together} />
+                            {gap && <GapLine gap={gap} />}
+                        </React.Fragment>
+                    ))}
                 </div>
             ))}
         </div>
@@ -293,6 +366,16 @@ function Journal({ lines }: { lines: Sighting[]; }) {
 
 function PersonInfo({ userId, embedded, onClose }: { userId: string; embedded: boolean; onClose: () => void; }) {
     const forceUpdate = useForceUpdater();
+
+    useEffect(() => {
+        let open = true;
+        void loadMutualGuilds(userId).then(() => {
+            if (open) forceUpdate();
+        });
+        return () => {
+            open = false;
+        };
+    }, [userId]);
 
     useEffect(() => {
         const redraw = throttle(forceUpdate, REDRAW_THROTTLE_MS);
@@ -320,6 +403,7 @@ function PersonInfo({ userId, embedded, onClose }: { userId: string; embedded: b
             <WindowHead
                 embedded={embedded}
                 onClose={onClose}
+                trailing={<><ModViewButton userId={userId} /><LookupButton userId={userId} /></>}
                 leading={
                     <span className={cl("info-header-avatar")}>
                         <img src={getAvatarUrl(userId) ?? DEFAULT_AVATAR_URL} alt="" />
@@ -352,6 +436,63 @@ function PersonInfo({ userId, embedded, onClose }: { userId: string; embedded: b
                 <Journal lines={lines} />
             </div>
         </>
+    );
+}
+
+/** Stays visible even when it cannot work, so its hint can say what is missing. */
+function ModViewButton({ userId }: { userId: string; }) {
+    const choice = pickModViewGuild(userId);
+    const off = choice.guildId === undefined;
+
+    return (
+        <span className={cl("chip-split")}>
+            <Hint text={off ? choice.problem : T.modViewHint(choice.guildName)}>
+                {hintProps => (
+                    <button
+                        {...hintProps}
+                        className={cl("chip") + " " + cl(off ? "chip-off" : "chip-split-main")}
+                        aria-disabled={off}
+                        onClick={() => {
+                            if (choice.guildId === undefined) toast(choice.problem, ToastType.FAILURE);
+                            else showModView(userId, choice.guildId);
+                        }}
+                    >
+                        <ShieldIcon size={16} />
+                        {T.modViewButton}
+                    </button>
+                )}
+            </Hint>
+            {!off && (
+                <Hint text={T.modViewOtherHint}>
+                    {hintProps => (
+                        <button
+                            {...hintProps}
+                            className={cl("chip") + " " + cl("chip-split-more")}
+                            aria-label={T.modViewOtherHint}
+                            onClick={event => openModViewServerMenu(event, userId)}
+                        >
+                            <ChevronDownIcon />
+                        </button>
+                    )}
+                </Hint>
+            )}
+        </span>
+    );
+}
+
+function LookupButton({ userId }: { userId: string; }) {
+    const link = lookupLink(userId);
+    if (!link) return null;
+
+    return (
+        <Hint text={T.lookupHint(link.host)}>
+            {hintProps => (
+                <button {...hintProps} className={cl("chip")} onClick={() => openLookup(userId)}>
+                    <ExternalIcon />
+                    {link.host}
+                </button>
+            )}
+        </Hint>
     );
 }
 

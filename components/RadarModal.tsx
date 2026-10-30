@@ -36,7 +36,7 @@ import { cl } from "./common";
 import { RadarIcon } from "./icons";
 import { FollowCard, Footer, isLiveOnly, LiveFilter, PendingChips, SearchBox, type Tab, Tabs } from "./RadarControls";
 import { Header, readState, WINDOW_LABEL } from "./RadarHeader";
-import { type DragHandlers, UserRow } from "./UserRow";
+import { type DragHandlers, getMemoUserRow, rowSharedKey, rowSignature } from "./UserRow";
 import { closeWindow, isWindowOpen, openWindow } from "./Window";
 
 const LIVE_REFRESH_MS = 15000;
@@ -64,14 +64,11 @@ function useRowsToDraw(total: number, tab: Tab): number {
     const [drawn, setDrawn] = useState({ tab, count: FIRST_ROWS });
     const count = drawn.tab === tab ? drawn.count : FIRST_ROWS;
 
+    // After a tab switch the count is already the first batch, so the next one has to be asked for right here.
     useEffect(() => {
-        if (drawn.tab !== tab) {
-            setDrawn({ tab, count: FIRST_ROWS });
-            return;
-        }
         if (count >= total) return;
 
-        const frame = requestAnimationFrame(() => setDrawn(current => ({ tab: current.tab, count: current.count + ROWS_PER_FRAME })));
+        const frame = requestAnimationFrame(() => setDrawn({ tab, count: count + ROWS_PER_FRAME }));
         return () => cancelAnimationFrame(frame);
     }, [tab, count, total]);
 
@@ -208,6 +205,8 @@ function RadarWindow({ onClose, embedded = false }: { onClose: () => void; embed
 
     const shownList = withMeFirst(applyFrozenOrder(inVoiceOnly(tab === "pinned" ? pinnedMatching : recentMatching)));
     const rowsToDraw = useRowsToDraw(shownList.length, tab);
+    const Row = getMemoUserRow();
+    const sharedKey = rowSharedKey();
 
     const isEmpty = !pinnedMatching.length && !recentMatching.length;
     const status = readState();
@@ -261,9 +260,10 @@ function RadarWindow({ onClose, embedded = false }: { onClose: () => void; embed
                     </div>
                 ) : shownList.length ? (
                     shownList.slice(0, rowsToDraw).map(user => (
-                        <UserRow
+                        <Row
                             key={user.id}
                             user={user}
+                            signature={rowSignature(user, sharedKey)}
                             drag={tab === "pinned" ? pinnedDrag : undefined}
                         />
                     ))

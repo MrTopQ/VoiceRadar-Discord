@@ -148,3 +148,47 @@ export function unregisterGlobalHotkey(): void {
 
     registered = null;
 }
+
+/** Its own saved session, so signing in to the site in this window never touches Discord's. */
+const LOOKUP_PARTITION = "persist:voiceradar-lookup";
+
+let lookupWindow: BrowserWindow | null = null;
+
+export function openLookupWindow(_event: IpcMainInvokeEvent, url: string, title: string): boolean {
+    let parsed: URL;
+    try {
+        parsed = new URL(url);
+    } catch {
+        return false;
+    }
+    if (parsed.protocol !== "https:") return false;
+
+    if (!lookupWindow || lookupWindow.isDestroyed()) {
+        const webPreferences = { partition: LOOKUP_PARTITION, sandbox: true, contextIsolation: true, nodeIntegration: false };
+
+        lookupWindow = new BrowserWindow({
+            width: 1100,
+            height: 820,
+            title,
+            autoHideMenuBar: true,
+            backgroundColor: "#111214",
+            webPreferences
+        });
+
+        // Sign-in popups stay in the same isolated session.
+        lookupWindow.webContents.setWindowOpenHandler(() => ({
+            action: "allow",
+            overrideBrowserWindowOptions: { autoHideMenuBar: true, webPreferences }
+        }));
+        lookupWindow.on("closed", () => {
+            lookupWindow = null;
+        });
+    }
+
+    void lookupWindow.loadURL(parsed.href);
+    if (lookupWindow.isMinimized()) lookupWindow.restore();
+    lookupWindow.show();
+    lookupWindow.focus();
+    return true;
+}
+

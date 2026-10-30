@@ -17,7 +17,7 @@
 */
 
 import { classNameFactory } from "@utils/css";
-import type { ReactNode } from "react";
+import type { MouseEvent, ReactNode } from "react";
 
 import { T } from "../i18n";
 import type { PlatformPresence } from "../presence";
@@ -29,20 +29,22 @@ export const cl = classNameFactory("vr-");
 interface ActionButtonProps {
     icon: ReactNode;
     tooltip: string;
-    onClick: () => void;
+    onClick: (event: MouseEvent) => void;
     active?: boolean;
     danger?: boolean;
     warn?: boolean;
     disabled?: boolean;
+    extraClass?: string;
 }
 
-export function ActionButton({ icon, tooltip, onClick, active, danger, warn, disabled }: ActionButtonProps) {
+export function ActionButton({ icon, tooltip, onClick, active, danger, warn, disabled, extraClass }: ActionButtonProps) {
     const className = [
         cl("action"),
         active && cl("action-active"),
         danger && cl("action-danger"),
         warn && cl("action-warn"),
-        disabled && cl("action-disabled")
+        disabled && cl("action-disabled"),
+        extraClass
     ].filter(Boolean).join(" ");
 
     return (
@@ -57,7 +59,7 @@ export function ActionButton({ icon, tooltip, onClick, active, danger, warn, dis
                     aria-label={tooltip}
                     onClick={event => {
                         event.stopPropagation();
-                        if (!disabled) onClick();
+                        if (!disabled) onClick(event);
                     }}
                 >
                     {icon}

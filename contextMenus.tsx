@@ -22,10 +22,13 @@ import type { ReactElement } from "react";
 
 import { toggleAutoJoinFor, toggleMagnetFor } from "./actions";
 import { getChannelInfo, getVoiceInfo } from "./channels";
+import { modViewMenuItems } from "./components/ModViewMenu";
+import { openPersonInfo } from "./components/PersonInfoModal";
 import { openRadarModal } from "./components/RadarModal";
 import { refreshGuildSubscriptions } from "./guildSubscriptions";
 import { T } from "./i18n";
 import { joinVoiceChannel } from "./join";
+import { noteOurMenu } from "./menuWatch";
 import { getReturnableBatch, sendBatchBack } from "./moveHistory";
 import { canMoveUser, canShowMagnet, canShowStickyMute, isModeratorMode } from "./movePermissions";
 import { getStoredName, getUserDisplayName, UNKNOWN_NAME } from "./names";
@@ -38,6 +41,7 @@ import { toast, ToastType } from "./toast";
 
 interface UserContextProps {
     user?: { id: string; username?: string; };
+    guildId?: string;
 }
 
 const MENU_ANCHORS = [
@@ -46,7 +50,7 @@ const MENU_ANCHORS = [
     { id: "leave-channel", loose: false }
 ];
 
-function insertNearAnchor(children: any[], item: ReactElement) {
+function insertNearAnchor(children: any[], ...items: ReactElement[]) {
     for (const anchor of MENU_ANCHORS) {
         const group = findGroupChildrenByChildId(anchor.id, children, anchor.loose);
         if (!group) continue;
@@ -57,11 +61,11 @@ function insertNearAnchor(children: any[], item: ReactElement) {
 
         if (index < 0) continue;
 
-        group.splice(index + 1, 0, item);
+        group.splice(index + 1, 0, ...items);
         return;
     }
 
-    children.splice(Math.max(1, children.length - 1), 0, item);
+    children.splice(Math.max(1, children.length - 1), 0, ...items);
 }
 
 /** Resolved when a menu is built, because a Discord update can move these. */
@@ -73,7 +77,8 @@ function menuParts() {
     };
 }
 
-export const userContextPatch: NavContextMenuPatchCallback = (children, { user }: UserContextProps) => {
+export const userContextPatch: NavContextMenuPatchCallback = (children, { user, guildId }: UserContextProps) => {
+    noteOurMenu("user");
     const { CheckboxItem, Separator } = menuParts();
     if (!user?.id) return;
     if (user.id === UserStore.getCurrentUser()?.id) return;
@@ -195,7 +200,14 @@ export const userContextPatch: NavContextMenuPatchCallback = (children, { user }
                 </Menu.MenuItem>
             )}
         </Menu.MenuItem>
-    ));
+    ), (
+        <Menu.MenuItem
+            id="voice-radar-history"
+            key="voice-radar-history"
+            label={T.menuHistory}
+            action={() => openPersonInfo(user.id)}
+        />
+    ), ...modViewMenuItems(user.id, guildId));
 };
 
 interface ChannelContextProps {
@@ -203,6 +215,7 @@ interface ChannelContextProps {
 }
 
 export const channelContextPatch: NavContextMenuPatchCallback = (children, { channel }: ChannelContextProps) => {
+    noteOurMenu("channel");
     const { CheckboxItem, Separator } = menuParts();
     // 2 is a voice channel, 13 a stage.
     if (!channel?.id || (channel.type !== 2 && channel.type !== 13)) return;
