@@ -107,8 +107,8 @@ export function loadMutualGuilds(userId: string): Promise<boolean> {
                 return true;
             }
 
-            // A refusal for one person or a rate limit says nothing about the request itself.
-            if (error?.status !== 429 && error?.status !== 403) reportBroken(T.apiMutualGuilds);
+            // Only a rejected request means it changed, a refusal, a rate limit, a server hiccup or a lost connection do not.
+            if (error?.status === 400 || error?.status === 404) reportBroken(T.apiMutualGuilds);
 
             console.warn("[VoiceRadar-Discord] could not load shared servers:", error?.status ?? "", error?.body?.message ?? error);
             return false;

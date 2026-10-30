@@ -334,14 +334,14 @@ export function UserRow({ user, drag }: UserRowProps) {
 
     const magnetTooltip = !user.autoPull
         ? T.magnetOff
-        : moveAccess === "no"
-            ? T.magnetIdleNoPermission
-            : !getMyChannelId()
-                ? T.magnetIdleNotConnected
-                : !voice
-                    ? T.magnetIdleTargetOffline
-                    : voice.guildId !== getMyGuildId()
-                        ? T.magnetIdleOtherGuild
+        : !getMyChannelId()
+            ? T.magnetIdleNotConnected
+            : !voice
+                ? T.magnetIdleTargetOffline
+                : voice.guildId !== getMyGuildId()
+                    ? T.magnetIdleOtherGuild
+                    : moveAccess === "no"
+                        ? T.magnetIdleNoPermission
                         : T.magnetActive;
 
     const queuedChannelId = voice?.channelId ?? user.lastChannelId;

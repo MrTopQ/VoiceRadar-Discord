@@ -43,7 +43,7 @@ import { setJoinCardShower } from "./joinAlert";
 import { lookupProblems, migrateLookupUrl } from "./lookup";
 import { forgetMagnetState } from "./magnet";
 import { forgetMenuWatch, watchMenus } from "./menuWatch";
-import { modViewProblems, resetModView } from "./modView";
+import { allowsModView, highestModViewRole, modViewProblems, resetModView, showHiddenThingsOpensModView } from "./modView";
 import { cancelBatches, forgetClicks, moveApiProblems } from "./moveApi";
 import { forgetMoveHistory } from "./moveHistory";
 import { forgetMoveAccess, movePermissionProblems } from "./movePermissions";
@@ -106,6 +106,25 @@ function verifyPanelButtonPatch(attemptsLeft: number) {
     }, PATCH_CHECK_DELAY_MS);
 }
 
+function runStartupCheck() {
+    setHealthChecker(checkDiscordApis);
+
+    try {
+        const health = checkDiscordApis();
+        setApiHealth(health);
+
+        const problems = [...health.broken, ...health.degraded];
+        if (problems.length) {
+            console.warn(
+                "[VoiceRadar-Discord] these Discord internals were not found, and a Discord update probably moved them.",
+                problems.join(", ")
+            );
+        }
+    } catch (error) {
+        console.error("[VoiceRadar-Discord] the startup check itself failed:", error);
+    }
+}
+
 function checkDiscordApis(): ApiHealth {
     return new HealthReport()
         .merge(channelProblems())
@@ -150,10 +169,30 @@ export default definePlugin({
                 match: /(children:\[)(?=.{0,300}?accountContainerRef)/,
                 replace: "$1$self.VoiceRadarPanelButton(arguments[0]),"
             }
+        },
+        {
+            // The rights check ShowHiddenThings turns off, here only for the moderator panels the radar opens.
+            predicate: () => !showHiddenThingsOpensModView(),
+            find: /,checkElevated:!1}\),\i\.\i\)}(?<=getCurrentUser\(\);return.+?)/,
+            replacement: {
+                match: /return (\i\.\i\(\i\.\i\(\{user:\i,context:(\i),checkElevated:!1\}\),\i\.\i\))/,
+                replace: "return $self.allowsModView($2)||$1"
+            }
+        },
+        {
+            predicate: () => !showHiddenThingsOpensModView(),
+            find: "#{intl::GUILD_MEMBER_MOD_VIEW_HIGHEST_ROLE}),children:",
+            replacement: {
+                match: /(#{intl::GUILD_MEMBER_MOD_VIEW_HIGHEST_ROLE}.{0,80})role:\i(?<=\[\i\.roles,\i\.highestRoleId,(\i)\].+?)/,
+                replace: (_, rest, roles) => `${rest}role:$self.highestModViewRole(arguments[0],${roles})`
+            }
         }
     ],
 
     VoiceRadarPanelButton: ErrorBoundary.wrap(PanelButtonGate, { noop: true }),
+
+    allowsModView,
+    highestModViewRole,
 
     get toolboxActions() {
         return { [T.menuOpenRadar]: openRadarModal };
@@ -171,6 +210,8 @@ export default definePlugin({
         // The hotkey goes first, so the window stays reachable if anything below fails.
         registerHotkey(openRadarModal);
         syncGlobalHotkey(openRadarModal);
+        // Next, so the health page has answers even if a later step throws.
+        runStartupCheck();
         migrateLookupUrl();
         migrateJoinAlert();
         setJoinCardShower(showJoinCard);
@@ -207,23 +248,6 @@ export default definePlugin({
         startStickyMuteSweeps();
 
         if (settings.store.showPanelButton) verifyPanelButtonPatch(PATCH_CHECK_ATTEMPTS);
-
-        setHealthChecker(checkDiscordApis);
-
-        try {
-            const health = checkDiscordApis();
-            setApiHealth(health);
-
-            const problems = [...health.broken, ...health.degraded];
-            if (problems.length) {
-                console.warn(
-                    "[VoiceRadar-Discord] these Discord internals were not found, and a Discord update probably moved them.",
-                    problems.join(", ")
-                );
-            }
-        } catch (error) {
-            console.error("[VoiceRadar-Discord] the startup check itself failed:", error);
-        }
     },
 
     async stop() {

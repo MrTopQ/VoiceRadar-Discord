@@ -17,6 +17,7 @@
 */
 
 import { getApiHealth } from "../apiHealth";
+import type { FeatureLevel } from "../features";
 import { getHotkeyReach, isHotkeyReachSettled } from "../globalHotkey";
 import { getSubscriptionProgress, getSubscriptionStatus } from "../guildSubscriptions";
 import { T } from "../i18n";
@@ -30,7 +31,7 @@ import { CloseIcon, RadarIcon } from "./icons";
 export const WINDOW_LABEL = "Voice Radar";
 
 export interface PluginState {
-    state: "good" | "waiting" | "bad";
+    state: FeatureLevel;
     label: string;
 }
 
@@ -40,23 +41,19 @@ export function readState(): PluginState {
 
     const store = getStoreState();
     if (store === "failed") return { state: "bad", label: T.statusListLost };
-    if (store === "loading") return { state: "waiting", label: T.statusLoading };
+    if (store === "loading") return { state: "pending", label: T.statusLoading };
 
     // Startup lasts until the first pass has finished.
     if (!getSubscriptionStatus()) {
-        return { state: "waiting", label: T.statusLoading };
+        return { state: "pending", label: T.statusLoading };
     }
 
     if (degraded.length) return { state: "waiting", label: T.statusDegraded(degraded.length) };
 
     const reach = getHotkeyReach();
+    if (reach === "asking") return { state: "pending", label: T.statusLoading };
     if (!isHotkeyReachSettled(reach)) {
-        return {
-            state: "waiting",
-            label: reach === "taken" ? T.statusHotkeyTaken
-                : reach === "asking" ? T.statusLoading
-                    : T.statusNeedsRestart
-        };
+        return { state: "waiting", label: reach === "taken" ? T.statusHotkeyTaken : T.statusNeedsRestart };
     }
 
     return { state: "good", label: T.statusReady };

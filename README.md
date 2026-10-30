@@ -30,8 +30,9 @@ Vencord plugin. Remembers everyone you shared a voice channel with and shows whe
   <sub>The log keeps the last 80 entries per person, only on your computer.</sub>
 - **Mod View.** A double button on the row, in the info window and in the right-click menu opens
   Discord's own Mod View panel for the person. The shield half picks the server they sit on, the
-  arrow half lists your other shared servers. Discord shows that panel only to moderators, so the
-  button appears where you have the rights, or everywhere once Vencord's ShowHiddenThings plugin is on.
+  arrow half lists your other shared servers. Discord keeps that panel for moderators, so the plugin
+  lifts the check the way Vencord's ShowHiddenThings does, only for the panels it opens itself, and
+  it works on any shared server with no rights at all.
 - **Notifications.** A bell per person, naming the channel. Several joins collapse into one. A card
   in the corner of Discord shows who joined, with a Join button, and waits until you look at Discord,
   since Windows hides its own notification during a game. A sound goes with it, the plugin chime
@@ -47,9 +48,10 @@ Vencord plugin. Remembers everyone you shared a voice channel with and shows whe
   up on top of it.
 - **Startup.** Servers are asked for voice states ten at a time, so the radar is ready a few seconds
   after Discord logs in.
-- **Moderator mode** (off by default). Pull one person or a whole channel to you (99 per click,
+- **Moderator mode** (on by default, shows nothing where you lack the rights). Pull one person or a whole channel to you (99 per click,
   confirmation past eight, four moves at a time by default), undo a pull, magnet one person back each
-  time they leave. Needs Move Members in both channels of the same server. A sticky mute server-mutes
+  time they leave. Pulling needs Move Members in both channels of the same server. The magnet shows
+  wherever you may move the person and waits while you sit somewhere it cannot pull them to. A sticky mute server-mutes
   a person again whenever the mute is lifted or they rejoin, in any server where you hold Mute
   Members, until you switch it off.
 - **UI.** Account panel button with a counter, submenu in user menus and profiles, entry in voice and
@@ -93,7 +95,7 @@ Eighteen, in panel order. Vencord prints a longer description beside each.
 | Servers watched for voice | slider, 10 to 200 | 100 | Discord only sends voice states for subscribed servers, so joins past this number go unseen. Your people's servers come first, and the window says how many did not fit |
 | Keep timers awake | switch | on | Holds Discord's timers at normal pace in the background, so a join reaches you in seconds instead of minutes |
 | Group move speed | dropdown | Fast | Careful sends one move at a time, Fast four, Instant eight. Every move is a line in the server's audit log |
-| Moderator mode | switch | off | Adds pull, undo, magnet and sticky mute where you hold the permission |
+| Moderator mode | switch | on | Adds pull, undo, magnet and sticky mute where you hold the permission |
 | Lookup site | text | discord-sensor.com/members/{id} | The info window's button, {id} becomes the person's ID, empty removes it |
 | Panel button | switch | on | Goes away at once, needs a restart to come back |
 | Hotkey system wide | switch | off | The hotkey fires while Discord sits in the background and brings it up. Needs a full restart |

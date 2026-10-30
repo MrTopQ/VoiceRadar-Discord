@@ -21,7 +21,8 @@ import { T } from "./i18n";
 import { ALERT_OFF, CUSTOM_SOUND, getJoinAlert, settings } from "./settings";
 import { getStickyMuted } from "./store";
 
-export type FeatureLevel = "good" | "waiting" | "bad";
+/** Pending is a normal wait during startup, waiting means something needs a look. */
+export type FeatureLevel = "good" | "pending" | "waiting" | "bad";
 
 export interface FeatureRow {
     title: string;
@@ -98,7 +99,7 @@ function features(): Feature[] {
         {
             title: T.healthModViewTitle,
             works: T.healthModViewOk,
-            parts: [T.apiModView, T.apiModViewKind, T.apiModViewMenu]
+            parts: [T.apiModView, T.apiModViewKind, T.apiModViewMenu, T.apiModViewBypass]
         },
         {
             title: T.healthLookupTitle,

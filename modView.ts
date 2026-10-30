@@ -31,7 +31,7 @@ import { sharedGuildIds } from "./profileFacts";
 import { getTrackedUser } from "./store";
 import { toast, ToastType } from "./toast";
 
-/** The stock Vencord plugin that lets Discord show this panel on every server. */
+/** The stock Vencord plugin that turns the same rights check off for the whole of Discord. */
 const SHOW_HIDDEN_THINGS = "ShowHiddenThings";
 
 /** Discord's number for the moderator panel, for when its list of panel kinds cannot be found. */
@@ -39,6 +39,15 @@ const MOD_VIEW_PANEL_FALLBACK = 4;
 
 /** Without the rights Discord shuts the panel at once, so a look after this long tells whether it stayed. */
 const CLOSED_CHECK_MS = 1500;
+
+/** Discord may check the rights before the panel is up, so a fresh opening counts for this long. */
+const OPENING_GRACE_MS = 3000;
+
+/** Servers where the radar put the panel up without the rights, with when it did. */
+const openedHere = new Map<string, number>();
+
+/** Set once Discord shut such a panel anyway, after which only real rights count. */
+let bypassFailed = false;
 
 /** The rights Discord asks for before it shows the panel. */
 const MODERATOR_PERMISSIONS = ["ADMINISTRATOR", "MANAGE_GUILD", "BAN_MEMBERS", "KICK_MEMBERS", "MODERATE_MEMBERS"];
@@ -61,9 +70,47 @@ function read<T>(get: () => T | null | undefined): T | null {
     }
 }
 
-export function canOpenModViewEverywhere(): boolean {
+export function showHiddenThingsOpensModView(): boolean {
     return probe(() => isPluginEnabled(SHOW_HIDDEN_THINGS)
         && (Settings.plugins as any)[SHOW_HIDDEN_THINGS]?.showModView !== false);
+}
+
+export function canOpenModViewEverywhere(): boolean {
+    return showHiddenThingsOpensModView() || !bypassFailed;
+}
+
+function guildIdOf(context: any): string | null {
+    if (typeof context === "string") return context;
+    const id = context?.guild_id ?? context?.id;
+    return typeof id === "string" ? id : null;
+}
+
+/** Discord's rights check for the panel asks here first, and only panels the radar put up get through. */
+export function allowsModView(context: any): boolean {
+    if (!openedHere.size) return false;
+
+    try {
+        const guildId = guildIdOf(context);
+        const openedAt = guildId ? openedHere.get(guildId) : undefined;
+        if (!guildId || openedAt == null) return false;
+
+        if (Date.now() - openedAt < OPENING_GRACE_MS || panelUser(guildId) != null) return true;
+
+        openedHere.delete(guildId);
+        return false;
+    } catch {
+        return false;
+    }
+}
+
+/** Discord reads the highest role off its members page, which only moderators load, so it comes from the member here. */
+export function highestModViewRole(props: any, roles: any) {
+    try {
+        const roleId = props?.member?.highestRoleId;
+        return Array.isArray(roles) ? roles.find(role => role?.id === roleId) : undefined;
+    } catch {
+        return undefined;
+    }
 }
 
 export function isModeratorIn(guildId: string): boolean {
@@ -186,6 +233,9 @@ export function openModView(userId: string, guildId: string): boolean {
         return false;
     }
 
+    const needsBypass = !showHiddenThingsOpensModView() && !isModeratorIn(guildId);
+    if (needsBypass) openedHere.set(guildId, Date.now());
+
     try {
         if (read(() => (Common as any).SelectedChannelStore?.getChannelId?.()) !== channelId) openChannel(channelId);
 
@@ -207,16 +257,32 @@ export function openModView(userId: string, guildId: string): boolean {
     }
 
     proveWorking(T.apiModView);
-
-    setTimeout(() => {
-        if (panelUser(guildId) == null) toast(T.modViewClosedByDiscord, ToastType.FAILURE);
-    }, CLOSED_CHECK_MS);
+    setTimeout(() => checkPanelStayed(guildId, needsBypass), CLOSED_CHECK_MS);
 
     return true;
 }
 
+function checkPanelStayed(guildId: string, neededBypass: boolean) {
+    if (panelUser(guildId) != null) {
+        if (neededBypass) proveWorking(T.apiModViewBypass);
+        return;
+    }
+
+    if (!neededBypass) {
+        toast(T.modViewClosed, ToastType.FAILURE);
+        return;
+    }
+
+    bypassFailed = true;
+    openedHere.delete(guildId);
+    reportBroken(T.apiModViewBypass);
+    toast(T.modViewClosedByDiscord, ToastType.FAILURE);
+}
+
 export function resetModView() {
     moderatorIn.clear();
+    openedHere.clear();
+    bypassFailed = false;
 }
 
 export function modViewProblems(): ApiHealth {

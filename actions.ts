@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-import { getVoiceInfo } from "./channels";
+import { getMyGuildId, getVoiceInfo } from "./channels";
 import { T } from "./i18n";
 import { forgetPullHistory, magnetCooldownLeft } from "./magnet";
 import { getUserDisplayName } from "./names";
@@ -97,8 +97,9 @@ export function toggleMagnetFor(userId: string, storedName: string) {
         return;
     }
 
+    // Pulling only works inside one server, elsewhere the magnet waits and its button says why.
     const voice = getVoiceInfo(userId);
-    if (voice && !voice.isMyChannel) void pullToMyChannel(userId);
+    if (voice && !voice.isMyChannel && voice.guildId === getMyGuildId()) void pullToMyChannel(userId);
 
     toast(T.magnetOnFor(name), ToastType.SUCCESS);
 }

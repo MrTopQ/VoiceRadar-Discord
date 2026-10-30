@@ -204,7 +204,7 @@ export const settings = definePluginSettings({
         get description() {
             return T.settingModeratorMode;
         },
-        default: false
+        default: true
     },
     lookupUrl: {
         type: OptionType.STRING,

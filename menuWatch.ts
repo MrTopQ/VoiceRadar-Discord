@@ -30,6 +30,8 @@ const SAME_OPENING_MS = 1500;
 
 interface Watch {
     ours: string[];
+    /** A renamed menu keeps this word, while menus that only carry a person or a channel along, like the stream menu, do not have it. */
+    word: string;
     label: () => string;
     ran: boolean;
     strange: number;
@@ -37,8 +39,8 @@ interface Watch {
 }
 
 const watches = {
-    user: { ours: USER_MENUS, label: () => T.apiUserMenuEntries, ran: false, strange: 0, lastStrangeAt: 0 } as Watch,
-    channel: { ours: CHANNEL_MENUS, label: () => T.apiChannelMenuEntries, ran: false, strange: 0, lastStrangeAt: 0 } as Watch
+    user: { ours: USER_MENUS, word: "user", label: () => T.apiUserMenuEntries, ran: false, strange: 0, lastStrangeAt: 0 } as Watch,
+    channel: { ours: CHANNEL_MENUS, word: "channel", label: () => T.apiChannelMenuEntries, ran: false, strange: 0, lastStrangeAt: 0 } as Watch
 };
 
 export function noteOurMenu(kind: keyof typeof watches) {
@@ -57,7 +59,7 @@ function isVoiceChannel(value: any): boolean {
 }
 
 function noteStrange(watch: Watch, navId: string) {
-    if (watch.ran || watch.ours.includes(navId)) return;
+    if (watch.ran || watch.ours.includes(navId) || !navId.includes(watch.word)) return;
 
     const now = Date.now();
     const sameOpening = now - watch.lastStrangeAt < SAME_OPENING_MS;

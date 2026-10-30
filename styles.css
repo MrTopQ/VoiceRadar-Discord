@@ -291,6 +291,27 @@
     color: var(--status-danger, #f23f43);
 }
 
+/* Still loading, nothing is wrong yet. */
+.vr-status-pending {
+    color: var(--vr-text-muted);
+}
+
+.vr-status-pending .vr-status-dot-small,
+.vr-status-dot-small.vr-status-pending {
+    animation: vr-pending 1.6s ease-in-out infinite;
+}
+
+@keyframes vr-pending {
+    50% { opacity: 0.35; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .vr-status-pending .vr-status-dot-small,
+    .vr-status-dot-small.vr-status-pending {
+        animation: none;
+    }
+}
+
 /* ── tabs, search and filter ────────────────────────────────────────────────────────────────── */
 
 .vr-controls {

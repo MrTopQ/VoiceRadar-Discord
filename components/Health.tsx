@@ -86,7 +86,7 @@ function serversRow(): Row {
 
     return {
         title: T.healthServersTitle,
-        level: subscriptionBroken || capped ? "waiting" : subscriptions ? "good" : "waiting",
+        level: subscriptionBroken || capped ? "waiting" : subscriptions ? "good" : "pending",
         detail: subscriptionBroken
             ? T.healthFeatureWeak(subscriptionIssues.join(", "))
             : progress
@@ -114,7 +114,7 @@ function environmentSection(): Row[] {
     const store = getStoreState();
     rows.push({
         title: T.healthListTitle,
-        level: store === "ready" ? "good" : store === "loading" ? "waiting" : "bad",
+        level: store === "ready" ? "good" : store === "loading" ? "pending" : "bad",
         detail: store === "ready"
             ? T.statusStoreLoaded(people.length, live)
             : store === "loading" ? T.statusStoreLoading : T.statusListLostLine
@@ -124,7 +124,7 @@ function environmentSection(): Row[] {
     const combo = formatHotkey(parseHotkey(settings.store.hotkey || DEFAULT_HOTKEY));
     rows.push({
         title: T.healthHotkeyTitle,
-        level: isHotkeyReachSettled(reach) ? "good" : "waiting",
+        level: isHotkeyReachSettled(reach) ? "good" : reach === "asking" ? "pending" : "waiting",
         detail: `${combo}. ${T.statusHotkey[reach]}`
     });
 
@@ -139,7 +139,7 @@ function environmentSection(): Row[] {
 
     rows.push({
         title: T.healthNotifyTitle,
-        level: permission === "denied" ? "bad" : permission === "granted" ? "good" : "waiting",
+        level: permission === "denied" ? "bad" : permission === "granted" ? "good" : "pending",
         detail: [
             !usesSystemNotifications
                 ? T.healthNotifyToastOnly
@@ -158,7 +158,7 @@ function environmentSection(): Row[] {
         title: T.healthTimersTitle,
         level: timers === "awake" || timers === "off"
             ? "good"
-            : timers === "refused" ? "bad" : "waiting",
+            : timers === "refused" ? "bad" : timers === "asking" ? "pending" : "waiting",
         detail: T.healthTimers[timers]
     });
 
@@ -167,7 +167,7 @@ function environmentSection(): Row[] {
     const quiet = since > 0 && Date.now() - since > QUIET_TOO_LONG_MS;
     rows.push({
         title: T.healthVoiceTitle,
-        level: coverage.guilds && !quiet ? "good" : "waiting",
+        level: coverage.guilds && !quiet ? "good" : !coverage.guilds && !getSubscriptionStatus() ? "pending" : "waiting",
         detail: !coverage.guilds
             ? T.healthVoiceNone
             : lastEventAt

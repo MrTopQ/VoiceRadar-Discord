@@ -85,9 +85,13 @@ export function canMoveUser(userId: string): boolean {
     return getMoveAccess(userId) !== "no";
 }
 
+/** The magnet needs the right only where the person sits, and waits while you are somewhere it cannot pull them to. */
 export function canShowMagnet(userId: string): boolean {
-    if (canMoveUser(userId)) return true;
-    return isModeratorMode() && getAutoPullTarget()?.id === userId;
+    if (!isModeratorMode()) return false;
+    if (getAutoPullTarget()?.id === userId) return true;
+
+    const voice = getVoiceInfo(userId);
+    return voice?.guildId != null && moveAccessForChannel(voice.channelId) !== "no";
 }
 
 const muteCache = new TtlCache<MoveAccess>(ACCESS_TTL_MS, ACCESS_MAX_ENTRIES);
