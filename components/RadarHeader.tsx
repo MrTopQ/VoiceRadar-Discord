@@ -16,6 +16,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+import type { ReactNode } from "react";
+
 import { getApiHealth } from "../apiHealth";
 import type { FeatureLevel } from "../features";
 import { getHotkeyReach, isHotkeyReachSettled } from "../globalHotkey";
@@ -23,7 +25,7 @@ import { getSubscriptionProgress, getSubscriptionStatus } from "../guildSubscrip
 import { T } from "../i18n";
 import { needsFullRestart } from "../mainProcess";
 import { getStoreState } from "../store";
-import { formatRelativeTime } from "../time";
+import { formatMoment } from "../time";
 import { cl } from "./common";
 import { openHealthModal } from "./Health";
 import { Hint } from "./Hint";
@@ -89,7 +91,7 @@ function StatusTooltip({ people, live }: { people: number; live: number; }) {
     const passRunning = getSubscriptionProgress() != null;
 
     const serversLine = subscriptions
-        ? T.statusServers(subscriptions.guilds, formatRelativeTime(subscriptions.at))
+        ? T.statusServers(subscriptions.guilds, formatMoment(subscriptions.at))
         : passRunning ? T.statusServersFirstPass : T.statusServersWaiting;
 
     return (
@@ -119,11 +121,12 @@ function StatusChip({ status, people, live }: { status: PluginState; people: num
     );
 }
 
-export function Header({ status, people, live, embedded, onClose }: {
+export function Header({ status, people, live, embedded, controls, onClose }: {
     status: PluginState;
     people: number;
     live: number;
     embedded: boolean;
+    controls?: ReactNode;
     onClose: () => void;
 }) {
     return (
@@ -136,6 +139,7 @@ export function Header({ status, people, live, embedded, onClose }: {
                 </div>
             </div>
             <StatusChip status={status} people={people} live={live} />
+            {controls}
             {!embedded && (
                 <button className={cl("close")} onClick={onClose} aria-label={T.closeWindow}>
                     <CloseIcon />

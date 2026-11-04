@@ -26,6 +26,7 @@ import { toast, ToastType } from "../toast";
 import { cl } from "./common";
 import { CloseIcon } from "./icons";
 import { openOverlay, type Overlay, type OverlaySize } from "./Overlay";
+import { focusedPopoutDocument } from "./RadarPopout";
 
 interface OpenWindow {
     overlay: Overlay | null;
@@ -87,6 +88,9 @@ export function openWindow(name: string, options: WindowOptions): boolean {
         entry.overlay = openOverlay({
             label: options.label,
             size: options.size,
+            placeKey: name,
+            // Over the popped out radar when it is where you clicked, so Discord's own window stays put.
+            own: focusedPopoutDocument() ?? document,
             keysTaken: options.keysTaken,
             render: close => guarded(options.render(close, false)),
             onClosed: forget

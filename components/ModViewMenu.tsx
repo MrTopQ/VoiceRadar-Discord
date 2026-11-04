@@ -22,13 +22,16 @@ import type { MouseEvent, ReactElement } from "react";
 import { proveWorking, reportBroken } from "../apiHealth";
 import { T } from "../i18n";
 import { type ModViewGuild, modViewGuildList, openModView, pickModViewGuild } from "../modView";
+import { closeProfile } from "../names";
 import { guildIconUrl, guildInitials } from "../profileFacts";
 import { toast, ToastType } from "../toast";
 import { cl } from "./common";
+import { menuOptionsFor } from "./RadarPopout";
 import { closeAllWindows } from "./Window";
 
 export function showModView(userId: string, guildId: string) {
     closeAllWindows();
+    closeProfile();
     openModView(userId, guildId);
 }
 
@@ -100,12 +103,16 @@ export function openModViewServerMenu(event: MouseEvent, userId: string) {
         return;
     }
 
+    // In the popped out radar the list opens there, through the menu layer that window carries.
+    const options = menuOptionsFor(event.currentTarget);
+    if (options === null) return;
+
     try {
-        ContextMenuApi.openContextMenu(event as any, () => (
+        (ContextMenuApi as any).openContextMenu(event, () => (
             <Menu.Menu navId="voice-radar-mod-view-servers" onClose={ContextMenuApi.closeContextMenu} aria-label={T.menuModViewOther}>
                 {items}
             </Menu.Menu>
-        ));
+        ), options);
         proveWorking(T.apiModViewMenu);
     } catch (error) {
         console.warn("[VoiceRadar-Discord] could not show the server list for Mod View:", error);

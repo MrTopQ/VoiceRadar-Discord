@@ -293,6 +293,40 @@ export function GlobeIcon({ size = 16, className }: IconProps) {
     );
 }
 
+export function PopOutIcon({ size = 18, className }: IconProps) {
+    return (
+        <svg {...base(size)} className={className}>
+            <path d="M14 4h6v6M20 4l-8 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+    );
+}
+
+export function PopInIcon({ size = 18, className }: IconProps) {
+    return (
+        <svg {...base(size)} className={className}>
+            <path d="M20 4l-8 8M12 7v5h5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M10 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+    );
+}
+
+export function MinimizeIcon({ size = 18, className }: IconProps) {
+    return (
+        <svg {...base(size)} className={className}>
+            <path d="M6 12h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+    );
+}
+
+export function OnTopIcon({ size = 18, className }: IconProps) {
+    return (
+        <svg {...base(size)} className={className}>
+            <path d="M5 4h14M12 20V9M7.5 13.5 12 9l4.5 4.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+    );
+}
+
 export function PlusIcon({ size = 18, className }: IconProps) {
     return (
         <svg {...base(size)} className={className}>
@@ -346,6 +380,203 @@ export function GearIcon({ size = 16, className }: IconProps) {
                 strokeLinejoin="round"
             />
             <circle cx="12" cy="12" r="2.8" stroke="currentColor" strokeWidth="1.7" />
+        </svg>
+    );
+}
+
+const stroke = { stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round" } as const;
+
+export function PeopleIcon({ size = 18, className }: IconProps) {
+    return (
+        <svg {...base(size)} className={className}>
+            <circle cx="9" cy="8.5" r="3.2" {...stroke} />
+            <path d="M3.5 19c.6-3 2.8-5 5.5-5s4.9 2 5.5 5M16 6.4a2.6 2.6 0 0 1 0 5.2M16.5 14.2c2.2.3 3.6 2 4 4.8" {...stroke} />
+        </svg>
+    );
+}
+
+export function RouteIcon({ size = 18, className }: IconProps) {
+    return (
+        <svg {...base(size)} className={className}>
+            <path d="M4 8h13M13.5 4.5 17 8l-3.5 3.5M20 16H7M10.5 12.5 7 16l3.5 3.5" {...stroke} />
+        </svg>
+    );
+}
+
+export function ServerIcon({ size = 18, className }: IconProps) {
+    return (
+        <svg {...base(size)} className={className}>
+            <rect x="4" y="4" width="16" height="7" rx="2" {...stroke} />
+            <rect x="4" y="13" width="16" height="7" rx="2" {...stroke} />
+            <path d="M8 7.5h.01M8 16.5h.01" {...stroke} strokeWidth={2.6} />
+        </svg>
+    );
+}
+
+export function ListIcon({ size = 18, className }: IconProps) {
+    return (
+        <svg {...base(size)} className={className}>
+            <path d="M9.5 7H20M9.5 12H20M9.5 17H20M4.8 7h.01M4.8 12h.01M4.8 17h.01" {...stroke} />
+        </svg>
+    );
+}
+
+export function WindowIcon({ size = 18, className }: IconProps) {
+    return (
+        <svg {...base(size)} className={className}>
+            <rect x="3" y="4.5" width="18" height="15" rx="2.5" {...stroke} />
+            <path d="M3 9h18M6.3 6.8h.01M8.8 6.8h.01" {...stroke} />
+        </svg>
+    );
+}
+
+export function PanelIcon({ size = 18, className }: IconProps) {
+    return (
+        <svg {...base(size)} className={className}>
+            <rect x="3" y="4.5" width="18" height="15" rx="2.5" {...stroke} />
+            <path d="M3 14.5h18M7 17h3M14 17h3" {...stroke} />
+        </svg>
+    );
+}
+
+export function CardIcon({ size = 18, className }: IconProps) {
+    return (
+        <svg {...base(size)} className={className}>
+            <rect x="2.5" y="5" width="19" height="14" rx="2.5" {...stroke} />
+            <circle cx="8" cy="10.5" r="2" {...stroke} />
+            <path d="M5.5 15.5c.6-1.3 1.5-1.9 2.5-1.9s1.9.6 2.5 1.9M13.5 10h5M13.5 13.5h3.5" {...stroke} />
+        </svg>
+    );
+}
+
+export function MessageIcon({ size = 18, className }: IconProps) {
+    return (
+        <svg {...base(size)} className={className}>
+            <path d="M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-7l-4 3.5V17H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" {...stroke} />
+            <path d="M7.5 10h9M7.5 13h6" {...stroke} />
+        </svg>
+    );
+}
+
+export function MusicIcon({ size = 18, className }: IconProps) {
+    return (
+        <svg {...base(size)} className={className}>
+            <path d="M9 17.5V6l10-2v11.5" {...stroke} />
+            <circle cx="6.5" cy="17.5" r="2.5" {...stroke} />
+            <circle cx="16.5" cy="15.5" r="2.5" {...stroke} />
+        </svg>
+    );
+}
+
+export function DatabaseIcon({ size = 18, className }: IconProps) {
+    return (
+        <svg {...base(size)} className={className}>
+            <ellipse cx="12" cy="6" rx="7" ry="2.8" {...stroke} />
+            <path d="M5 6v12c0 1.5 3.1 2.8 7 2.8s7-1.3 7-2.8V6M5 12c0 1.5 3.1 2.8 7 2.8s7-1.3 7-2.8" {...stroke} />
+        </svg>
+    );
+}
+
+export function ChipIcon({ size = 18, className }: IconProps) {
+    return (
+        <svg {...base(size)} className={className}>
+            <rect x="6.5" y="6.5" width="11" height="11" rx="2" {...stroke} />
+            <rect x="9.6" y="9.6" width="4.8" height="4.8" rx="1" fill="currentColor" />
+            <path d="M9.5 3v3.5M14.5 3v3.5M9.5 17.5V21M14.5 17.5V21M3 9.5h3.5M3 14.5h3.5M17.5 9.5H21M17.5 14.5H21" {...stroke} />
+        </svg>
+    );
+}
+
+export function PulseIcon({ size = 18, className }: IconProps) {
+    return (
+        <svg {...base(size)} className={className}>
+            <path d="M3 12h4l2.5-6 5 12 2.5-6h4" {...stroke} />
+        </svg>
+    );
+}
+
+export function RefreshIcon({ size = 16, className }: IconProps) {
+    return (
+        <svg {...base(size)} className={className}>
+            <path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3M19.5 4v4.5H15" {...stroke} strokeWidth={2} />
+        </svg>
+    );
+}
+
+export function AlertIcon({ size = 18, className }: IconProps) {
+    return (
+        <svg {...base(size)} className={className}>
+            <path d="M12 4 2.8 19.5h18.4L12 4Z" {...stroke} />
+            <path d="M12 10v4.2M12 17h.01" {...stroke} strokeWidth={2.2} />
+        </svg>
+    );
+}
+
+export function CheckCircleIcon({ size = 18, className }: IconProps) {
+    return (
+        <svg {...base(size)} className={className}>
+            <circle cx="12" cy="12" r="8.5" {...stroke} />
+            <path d="m8.5 12.2 2.4 2.4 4.6-4.8" {...stroke} strokeWidth={2} />
+        </svg>
+    );
+}
+
+export function BulbIcon({ size = 16, className }: IconProps) {
+    return (
+        <svg {...base(size)} className={className}>
+            <path d="M9.5 17.5h5M10.5 20.5h3M12 3.5a5.5 5.5 0 0 0-3.3 9.9c.8.6 1.3 1.5 1.3 2.5v.1h4v-.1c0-1 .5-1.9 1.3-2.5A5.5 5.5 0 0 0 12 3.5Z" {...stroke} />
+        </svg>
+    );
+}
+
+export function LeaveIcon({ size = 16, className }: IconProps) {
+    return (
+        <svg {...base(size)} className={className}>
+            <path d="M11 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h5M10 12h10M16.5 8.2l3.5 3.8-3.5 3.8" {...stroke} />
+        </svg>
+    );
+}
+
+export function EyeIcon({ size = 16, className }: IconProps) {
+    return (
+        <svg {...base(size)} className={className}>
+            <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" {...stroke} />
+            <circle cx="12" cy="12" r="2.8" {...stroke} />
+        </svg>
+    );
+}
+
+export function PlugIcon({ size = 16, className }: IconProps) {
+    return (
+        <svg {...base(size)} className={className}>
+            <path d="M9 3.5V8M15 3.5V8M6.5 8h11v3a5.5 5.5 0 0 1-11 0V8ZM12 16.5v4" {...stroke} />
+        </svg>
+    );
+}
+
+export function UserIcon({ size = 16, className }: IconProps) {
+    return (
+        <svg {...base(size)} className={className}>
+            <circle cx="12" cy="8" r="3.6" {...stroke} />
+            <path d="M5 20c.8-3.6 3.6-6 7-6s6.2 2.4 7 6" {...stroke} />
+        </svg>
+    );
+}
+
+export function StreamOffIcon({ size = 16, className }: IconProps) {
+    return (
+        <svg {...base(size)} className={className}>
+            <rect x="3" y="5.5" width="13" height="9.5" rx="2" {...stroke} />
+            <path d="M19 9.5 21.5 8v7.5L19 14M3.5 20 20.5 3.5" {...stroke} />
+        </svg>
+    );
+}
+
+export function CameraOffIcon({ size = 16, className }: IconProps) {
+    return (
+        <svg {...base(size)} className={className}>
+            <rect x="3" y="6.5" width="12.5" height="11" rx="2.5" {...stroke} />
+            <path d="M17.5 10.5 21.5 8v8l-4-2.5M3.5 20.5 20.5 3.5" {...stroke} />
         </svg>
     );
 }

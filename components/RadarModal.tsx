@@ -38,6 +38,7 @@ import { cl } from "./common";
 import { RadarIcon } from "./icons";
 import { EverywhereToggle, FollowCard, Footer, isLiveOnly, isSearchingEverywhere, LiveFilter, PendingChips, SearchBox, type Tab, Tabs } from "./RadarControls";
 import { Header, readState, WINDOW_LABEL } from "./RadarHeader";
+import { canPopOut, closeRadarPopout, isRadarPopoutFocused, isRadarPoppedOut, minimizeRadarPopout, PopOutButton, PopoutControls, popOutRadar } from "./RadarPopout";
 import { type DragHandlers, getMemoUserRow, rowSharedKey, rowSignature } from "./UserRow";
 import { VoiceSearchResults } from "./VoiceSearchResults";
 import { closeWindow, isWindowOpen, openWindow } from "./Window";
@@ -108,7 +109,18 @@ function usePinnedDrag(onChanged: () => void): DragHandlers {
     };
 }
 
-function RadarWindow({ onClose, embedded = false }: { onClose: () => void; embedded?: boolean; }) {
+function popRadarOut() {
+    closeRadarModal();
+    popOutRadar(close => <RadarWindow onClose={close} popout />);
+}
+
+function popRadarBackIn() {
+    closeRadarPopout();
+    // After Discord has let go of the popout, so the hotkey does not just bring it forward again.
+    setTimeout(openRadarModal, 0);
+}
+
+function RadarWindow({ onClose, embedded = false, popout = false }: { onClose: () => void; embedded?: boolean; popout?: boolean; }) {
     const forceUpdate = useForceUpdater();
     const [query, setQuery] = useState("");
     const [tab, setTab] = useState<Tab>(() =>
@@ -216,7 +228,16 @@ function RadarWindow({ onClose, embedded = false }: { onClose: () => void; embed
 
     return (
         <>
-            <Header status={status} people={total} live={live} embedded={embedded} onClose={onClose} />
+            <Header
+                status={status}
+                people={total}
+                live={live}
+                embedded={embedded}
+                controls={popout
+                    ? <PopoutControls onPopIn={popRadarBackIn} />
+                    : !embedded && canPopOut() && <PopOutButton onPopOut={popRadarOut} />}
+                onClose={onClose}
+            />
 
             <div className={cl("controls")}>
                 <Tabs
@@ -296,7 +317,19 @@ function RadarWindow({ onClose, embedded = false }: { onClose: () => void; embed
 
 const RADAR_WINDOW = "radar";
 
+/** The system wide hotkey, which leaves Discord's main window alone while the radar has a window of its own. */
+export function toggleRadarFromHotkey(): boolean | undefined {
+    if (!isRadarPoppedOut()) return openRadarModal();
+
+    if (isRadarPopoutFocused()) minimizeRadarPopout();
+    else popOutRadar(close => <RadarWindow onClose={close} popout />);
+
+    return undefined;
+}
+
 export function openRadarModal(): boolean {
+    if (isRadarPoppedOut()) return popOutRadar(close => <RadarWindow onClose={close} popout />);
+
     if (isWindowOpen(RADAR_WINDOW)) {
         closeWindow(RADAR_WINDOW, { animate: true });
         return false;

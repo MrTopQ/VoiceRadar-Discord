@@ -16,13 +16,11 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-/** A move inside one server names the server once, after the new channel. */
-export function moveLabel(fromLabel: string | null | undefined, toLabel: string): string {
-    if (!fromLabel) return toLabel;
+/** A channel's own name when the other side of a move sits in the same server, so such a move reads short. */
+export function placeName(label: string, other: string | null | undefined): string {
+    const cut = label.lastIndexOf(" · ");
+    const otherCut = other?.lastIndexOf(" · ") ?? -1;
+    const sameServer = cut > 0 && otherCut > 0 && label.slice(cut) === other!.slice(otherCut);
 
-    const fromCut = fromLabel.lastIndexOf(" · ");
-    const toCut = toLabel.lastIndexOf(" · ");
-    const sameServer = fromCut > 0 && toCut > 0 && fromLabel.slice(fromCut) === toLabel.slice(toCut);
-
-    return `${sameServer ? fromLabel.slice(0, fromCut) : fromLabel} → ${toLabel}`;
+    return sameServer ? label.slice(0, cut) : label;
 }

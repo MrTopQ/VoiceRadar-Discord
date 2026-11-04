@@ -25,7 +25,8 @@ import { toast, ToastType } from "./toast";
 /** The main process calls the window through this. */
 const BRIDGE = "$VoiceRadarHotkey";
 
-let onTrigger: (() => boolean) | null = null;
+/** True brings Discord up, false lets it drop back, and nothing leaves its window alone. */
+let onTrigger: (() => boolean | undefined) | null = null;
 
 type Claim = "idle" | "asking" | "held" | "taken";
 let claim: Claim = "idle";
@@ -91,10 +92,17 @@ export function syncBackgroundTimers(): void {
 }
 
 export function revealDiscord(): void {
-    void Native?.revealWindow();
+    if (Native) {
+        void Native.revealWindow();
+        return;
+    }
+
+    const view = (window as any).DiscordNative?.window;
+    view?.restore?.();
+    view?.focus?.();
 }
 
-export function syncGlobalHotkey(trigger?: () => boolean): void {
+export function syncGlobalHotkey(trigger?: () => boolean | undefined): void {
     if (trigger) onTrigger = trigger;
 
     if (!onTrigger) return;
@@ -107,7 +115,7 @@ export function syncGlobalHotkey(trigger?: () => boolean): void {
         return;
     }
 
-    (window as any)[BRIDGE] = () => onTrigger?.() ?? false;
+    (window as any)[BRIDGE] = () => onTrigger?.();
 
     if (!settings.store.globalHotkey) {
         claimRequest++;

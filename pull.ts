@@ -18,13 +18,14 @@
 
 import { ChannelStore, UserStore } from "@webpack/common";
 
-import { getMyChannelId, getVoiceInfo } from "./channels";
+import { getChannelInfo, getChannelParticipantIds, getMyChannelId, getVoiceInfo } from "./channels";
 import { confirmFirst } from "./confirm";
 import { T } from "./i18n";
+import { joinVoiceChannel } from "./join";
 import { batchToken, beginBatch, endBatch, isBatchCurrent, isBatchRunning, isRepeatClick, moveMember } from "./moveApi";
 import { type BatchTally, estimateBatchSeconds, runMoveBatch } from "./moveBatch";
 import { rememberMove } from "./moveHistory";
-import { canMoveUser } from "./movePermissions";
+import { canMoveUser, isModeratorMode, moveAccessForChannel } from "./movePermissions";
 import { getUserDisplayName } from "./names";
 import { getMovePace } from "./settings";
 import { toast, ToastType } from "./toast";
@@ -72,6 +73,10 @@ export async function movePersonToMe(userId: string): Promise<boolean> {
 const MAX_PULL_AT_ONCE = 99;
 
 const CONFIRM_ABOVE = 8;
+
+function namesOf(userIds: readonly string[], hidden: number): string {
+    return T.listNames(userIds.map(userId => getUserDisplayName(userId)), hidden);
+}
 
 interface PullCandidates {
     targets: string[];
@@ -141,7 +146,8 @@ export async function pullUsersToMe(userIds: string[], what: string) {
     if (targets.length > CONFIRM_ABOVE) {
         confirmFirst({
             title: T.pullConfirmTitle,
-            body: T.pullConfirmBody(targets.length, what, estimateBatchSeconds(targets.length, getMovePace())),
+            body: T.pullConfirmBody(targets.length, what, estimateBatchSeconds(targets.length, getMovePace()))
+                + " " + T.pullConfirmWho(namesOf(targets, skipped)),
             confirmText: T.pullConfirmButton(targets.length),
             cancelText: T.cancel,
             onConfirm: () => void runPull(targets, myChannelId, what, skipped, token)
@@ -199,4 +205,102 @@ export async function pullTheirChannelToMe(userId: string) {
     if (!voice) return;
 
     await pullUsersToMe(voice.participantIds, voice.channelName);
+}
+
+/** Your whole channel can move only inside one server, with Move Members on both sides. */
+export function canMoveGroupTo(channelId: string): boolean {
+    if (!isModeratorMode()) return false;
+
+    const myChannelId = getMyChannelId();
+    if (!myChannelId || myChannelId === channelId) return false;
+
+    const myGuildId = (ChannelStore.getChannel(myChannelId) as any)?.guild_id;
+    if (!myGuildId || (ChannelStore.getChannel(channelId) as any)?.guild_id !== myGuildId) return false;
+
+    return moveAccessForChannel(myChannelId) !== "no" && moveAccessForChannel(channelId) !== "no";
+}
+
+/** Moves everybody from your channel into another one, then takes you there as well. */
+export function moveGroupTo(channelId: string) {
+    if (isBatchRunning()) return;
+
+    const myChannelId = getMyChannelId();
+    if (!myChannelId) {
+        toast(T.joinChannelFirst, ToastType.FAILURE);
+        return;
+    }
+
+    const where = getChannelInfo(channelId).channelName;
+    if (!canMoveGroupTo(channelId)) {
+        toast(T.noMovePermissionHere(where), ToastType.FAILURE);
+        return;
+    }
+
+    const me = UserStore.getCurrentUser()?.id;
+    const company = getChannelParticipantIds(myChannelId).filter(userId => userId !== me);
+    const targets = company.slice(0, MAX_PULL_AT_ONCE);
+    const skipped = company.length - targets.length;
+
+    // Taken before the dialog, because the plugin can be stopped while it is open.
+    const token = batchToken();
+    const go = () => void runGroupMove(targets, myChannelId, channelId, where, skipped, token);
+
+    if (targets.length > CONFIRM_ABOVE) {
+        confirmFirst({
+            title: T.groupMoveConfirmTitle,
+            body: T.groupMoveConfirmBody(targets.length, where, estimateBatchSeconds(targets.length, getMovePace()))
+                + " " + T.groupMoveConfirmWho(namesOf(targets, skipped)),
+            confirmText: T.groupMoveConfirmButton(targets.length),
+            cancelText: T.cancel,
+            onConfirm: go
+        });
+        return;
+    }
+
+    go();
+}
+
+async function runGroupMove(targets: string[], fromChannelId: string, toChannelId: string, where: string, skipped: number, token: number) {
+    if (!isBatchCurrent(token)) return;
+    if (!beginBatch()) return;
+
+    const guildId = (ChannelStore.getChannel(toChannelId) as any)?.guild_id;
+    let tally: BatchTally = { done: 0, abandoned: 0 };
+
+    try {
+        tally = await runMoveBatch(
+            targets,
+            getMovePace(),
+            async userId => {
+                // Somebody who walked out on their own since the click is simply left be.
+                if (getVoiceInfo(userId)?.channelId !== fromChannelId) return null;
+
+                const outcome = await moveMember(guildId, userId, toChannelId, getUserDisplayName(userId), fromChannelId);
+
+                if (outcome.ok) {
+                    rememberMove(userId, fromChannelId, toChannelId);
+                    return { ok: true, rateLimited: false };
+                }
+
+                toast(outcome.problem!, ToastType.FAILURE);
+                return { ok: false, rateLimited: outcome.retryAfterMs > 0 };
+            },
+            () => isBatchCurrent(token) && getMyChannelId() === fromChannelId
+        );
+    } finally {
+        endBatch(token);
+    }
+
+    if (!isBatchCurrent(token)) return;
+
+    // You go last, so the others are already there when you arrive.
+    if (getMyChannelId() === fromChannelId) joinVoiceChannel(toChannelId);
+
+    const left = skipped + tally.abandoned;
+    if (!tally.done && !left) return;
+
+    toast(
+        left ? T.groupMovedPartly(tally.done, where, left) : T.groupMoved(tally.done, where),
+        left ? ToastType.MESSAGE : ToastType.SUCCESS
+    );
 }

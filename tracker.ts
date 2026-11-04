@@ -25,11 +25,13 @@ import {
     getChannelInfo,
     getMyChannelId,
     getVoiceInfo,
-    getVoiceSnapshot
+    getVoiceSnapshot,
+    voiceStateForUser
 } from "./channels";
 import { T } from "./i18n";
 import { joinVoiceChannel } from "./join";
 import { announceJoin } from "./joinAlert";
+import { checkJournal, mediaOf, noteMediaChange, noteMySighting, noteSighting } from "./journalRecorder";
 import { keepUserHere } from "./magnet";
 import { pruneMoveHistory } from "./moveHistory";
 import { ensureUserCachedSpaced, getAvatarUrl, getStoredName, getUserDisplayName } from "./names";
@@ -42,7 +44,6 @@ import {
     wasMyOwnDoing
 } from "./selfMoves";
 import { getAutoJoinCooldownMs, settings } from "./settings";
-import { recordSighting } from "./sightings";
 import {
     clearAutoJoin,
     getAutoJoinTarget,
@@ -53,7 +54,7 @@ import {
     updateLastChannel
 } from "./store";
 import { toast, ToastType } from "./toast";
-import { startWatch, stopWatch, touchWatch } from "./watchLog";
+import { resumeWatch, startWatch, stopWatch, touchWatch } from "./watchLog";
 
 interface VoiceState {
     userId: string;
@@ -73,6 +74,8 @@ export function getTrackerStats() {
 
 /** oldChannelId is not always in the payload, so we keep our own copy. */
 const lastChannels = new Map<string, string | null>();
+/** Stream and camera of everybody in voice, so the journal sees them go on and off. */
+const lastMedia = new Map<string, number>();
 let lastAutoJoinAt = 0;
 
 let myLastChannelId: string | null = null;
@@ -84,6 +87,12 @@ let sweepInterval: ReturnType<typeof setInterval> | null = null;
 /** Discord replays every voice state after a reconnect, so changes in this window are not real. */
 const RECONNECT_QUIET_MS = 8000;
 let quietUntil = 0;
+
+/** Discord's voice picture goes stale while offline, so the journal is not checked against it then. */
+let connected = true;
+
+/** The last voice change that arrived live, which anything replayed after a drop surely came after. */
+let lastLiveEventAt = 0;
 
 /** Hops within this time count as one join. */
 const NOTIFY_DEBOUNCE_MS = 2500;
@@ -104,20 +113,33 @@ export function setJoinedListOpener(open: ((userIds: string[]) => void) | null) 
 /** Read where everybody is first, so nobody looks like a fresh join. */
 function primeSnapshot() {
     lastChannels.clear();
-    for (const [userId, channelId] of getVoiceSnapshot()) lastChannels.set(userId, channelId);
+    lastMedia.clear();
+    for (const [userId, channelId] of getVoiceSnapshot()) {
+        lastChannels.set(userId, channelId);
+        lastMedia.set(userId, mediaOf(voiceStateForUser(userId)));
+    }
 
     myLastChannelId = getMyChannelId();
 }
 
 /** Nothing is seen while Discord is offline, so the watch stops until it is back. */
 function handleConnectionClosed() {
+    connected = false;
     stopWatch();
 }
 
 function handleConnectionOpen() {
+    connected = true;
+    lastLiveEventAt = Date.now();
     primeSnapshot();
     quietUntil = Date.now() + RECONNECT_QUIET_MS;
     startWatch(quietUntil);
+}
+
+/** A resume replays whatever was missed, so the watch simply goes on. */
+function handleConnectionResumed() {
+    connected = true;
+    resumeWatch();
 }
 
 function notifyJoin(userId: string, channelId: string) {
@@ -207,7 +229,7 @@ let declinedChannelId: string | null = null;
 
 /** Window for counting how often a forced move was undone. */
 const FORCED_RETURN_WINDOW_MS = 60_000;
-const MAX_FORCED_RETURNS = 6;
+export const MAX_FORCED_RETURNS = 6;
 let forcedReturns: number[] = [];
 
 function isBeingRemovedTooOften(): boolean {
@@ -393,56 +415,32 @@ function noteMyMove() {
     lastAutoJoinAt = 0;
 }
 
-function handleVoiceStateUpdates(event: { voiceStates: VoiceState[]; }) {
+function handleVoiceStateUpdates(event: { voiceStates: VoiceState[]; initial?: boolean; }) {
     try {
-        processVoiceStates(event);
+        // The states Discord hands over on logging in are where people already sit, not moves.
+        if (event.initial) rememberStates(event.voiceStates);
+        else processVoiceStates(event);
     } catch (error) {
         console.error("[VoiceRadar-Discord] voice state handler failed:", error);
     }
 }
 
-function noteSighting(userId: string, from: string | null, to: string | null) {
-    if (Date.now() < quietUntil) return;
-    if (!getTrackedUser(userId)) return;
+/** Keeps where everybody sits and what they show, without taking any of it for a move. */
+function rememberStates(voiceStates: VoiceState[]) {
+    lastEventAt = Date.now();
+    touchWatch(lastEventAt);
+    if (!Array.isArray(voiceStates)) return;
 
-    const channelId = to ?? from;
-    if (!channelId) return;
+    for (const state of voiceStates) {
+        if (!state?.userId) continue;
 
-    const mine = getMyChannelId();
-
-    try {
-        recordSighting(userId, {
-            kind: !to ? "left" : from ? "moved" : "joined",
-            channelId,
-            channelLabel: channelLabel(getChannelInfo(channelId)),
-            withYou: channelId === mine,
-            ...(to && from && from === mine ? { fromYou: true } : {}),
-            ...(to && from ? { fromLabel: channelLabel(getChannelInfo(from)) } : {})
-        });
-    } catch (error) {
-        console.warn("[VoiceRadar-Discord] could not note a sighting:", error);
-    }
-}
-
-/** Your own move goes into the journal of everybody on the list who sits in that channel. */
-function noteMySighting(myId: string, from: string | null, to: string | null) {
-    if (Date.now() < quietUntil) return;
-
-    const record = (channelId: string, kind: "you-joined" | "you-left") => {
-        const info = getChannelInfo(channelId);
-        const label = channelLabel(info);
-
-        for (const userId of info.participantIds) {
-            if (userId === myId || !getTrackedUser(userId)) continue;
-            recordSighting(userId, { kind, channelId, channelLabel: label, withYou: kind === "you-joined" });
+        if (state.channelId) {
+            lastChannels.set(state.userId, state.channelId);
+            lastMedia.set(state.userId, mediaOf(state));
+        } else {
+            lastChannels.delete(state.userId);
+            lastMedia.delete(state.userId);
         }
-    };
-
-    try {
-        if (from) record(from, "you-left");
-        if (to) record(to, "you-joined");
-    } catch (error) {
-        console.warn("[VoiceRadar-Discord] could not note your own move:", error);
     }
 }
 
@@ -453,18 +451,33 @@ function processVoiceStates({ voiceStates }: { voiceStates: VoiceState[]; }) {
     const me = UserStore.getCurrentUser();
     if (!me || !Array.isArray(voiceStates)) return;
 
+    const quiet = Date.now() < quietUntil;
+    // While disconnected the only voice changes coming in are the ones Discord replays on resuming.
+    const late = connected ? undefined : lastLiveEventAt;
+    if (connected) lastLiveEventAt = lastEventAt;
+
     for (const state of voiceStates) {
         const { userId } = state;
         if (!userId) continue;
 
         const channelId = state.channelId ?? null;
         const knownOld = lastChannels.has(userId) ? lastChannels.get(userId)! : state.oldChannelId ?? null;
+        const mediaBefore = lastMedia.get(userId);
+        const media = mediaOf(state);
 
-        if (channelId) lastChannels.set(userId, channelId);
-        else lastChannels.delete(userId);
+        if (channelId) {
+            lastChannels.set(userId, channelId);
+            lastMedia.set(userId, media);
+        } else {
+            lastChannels.delete(userId);
+            lastMedia.delete(userId);
+        }
 
-        // Mute, deafen and video changes also land here.
-        if (channelId === knownOld) continue;
+        // Mute, deafen, stream and camera changes also land here.
+        if (channelId === knownOld) {
+            if (channelId && !quiet && mediaBefore !== undefined && userId !== me.id) noteMediaChange(userId, channelId, mediaBefore, media, late);
+            continue;
+        }
 
         if (userId === me.id) {
             if (channelId) {
@@ -472,14 +485,14 @@ function processVoiceStates({ voiceStates }: { voiceStates: VoiceState[]; }) {
                 const held = getAutoPullTarget();
                 if (held) keepUserHere(held.id);
             }
-            noteMySighting(me.id, knownOld, channelId);
+            if (!quiet) noteMySighting(me.id, knownOld, channelId, late);
             continue;
         }
 
         if (channelId) handleUserJoined(userId, channelId);
 
         // After the join is handled, so somebody new who sat down with you is already on the list.
-        noteSighting(userId, knownOld, channelId);
+        if (!quiet) noteSighting(userId, knownOld, channelId, late);
     }
 
     noteMyMove();
@@ -496,6 +509,13 @@ export function sweepCurrentChannel() {
         console.error("[VoiceRadar-Discord] channel sweep failed:", error);
     }
 
+    // After the channel mates, so somebody just put on the list gets a line too.
+    try {
+        if (connected && Date.now() >= quietUntil) checkJournal();
+    } catch (error) {
+        console.error("[VoiceRadar-Discord] journal check failed:", error);
+    }
+
     try {
         checkQueue();
         keepFollowing();
@@ -510,11 +530,13 @@ export function startTracking() {
 
     primeSnapshot();
     startedAt = Date.now();
+    lastLiveEventAt = startedAt;
     quietUntil = Date.now() + RECONNECT_QUIET_MS;
     startWatch(quietUntil);
 
     FluxDispatcher.subscribe("VOICE_STATE_UPDATES", handleVoiceStateUpdates);
     FluxDispatcher.subscribe("CONNECTION_OPEN", handleConnectionOpen);
+    FluxDispatcher.subscribe("CONNECTION_RESUMED", handleConnectionResumed);
     FluxDispatcher.subscribe("CONNECTION_CLOSED", handleConnectionClosed);
     startWatchingMyChoices();
 
@@ -525,6 +547,7 @@ export function startTracking() {
 function teardownTracking() {
     FluxDispatcher.unsubscribe("VOICE_STATE_UPDATES", handleVoiceStateUpdates);
     FluxDispatcher.unsubscribe("CONNECTION_OPEN", handleConnectionOpen);
+    FluxDispatcher.unsubscribe("CONNECTION_RESUMED", handleConnectionResumed);
     FluxDispatcher.unsubscribe("CONNECTION_CLOSED", handleConnectionClosed);
     stopWatchingMyChoices();
     stopWatch();
@@ -544,8 +567,11 @@ function teardownTracking() {
     notifyBatch.clear();
 
     lastChannels.clear();
+    lastMedia.clear();
     lastAutoJoinAt = 0;
     quietUntil = 0;
+    connected = true;
+    lastLiveEventAt = 0;
     myLastChannelId = null;
 
     refusedChannelId = null;

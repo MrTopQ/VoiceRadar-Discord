@@ -22,6 +22,7 @@ import { forgetPullHistory, magnetCooldownLeft } from "./magnet";
 import { getUserDisplayName } from "./names";
 import { pullToMyChannel } from "./pull";
 import { cancelQueue, getQueueEntry } from "./queue";
+import { getAutoJoinCooldownMs, getAutoJoinCooldownSettingMs } from "./settings";
 import {
     addUser,
     getAutoJoinTarget,
@@ -33,7 +34,21 @@ import {
     toggleAutoPull
 } from "./store";
 import { toast, ToastType } from "./toast";
-import { forgetFollowRefusals, keepFollowing } from "./tracker";
+import { forgetFollowRefusals, keepFollowing, MAX_FORCED_RETURNS } from "./tracker";
+
+const inSeconds = (ms: number) => Math.round(ms / 100) / 10;
+
+/** Says what the setting holds and what the plugin really waits, since the floor and ceiling can differ from it. */
+export function describeAutoJoinPace(): string {
+    const wanted = inSeconds(getAutoJoinCooldownSettingMs());
+    const used = inSeconds(getAutoJoinCooldownMs());
+
+    const pace = wanted > used ? T.autoJoinPaceCeiling(wanted, used)
+        : used === 0 ? T.autoJoinNoPause
+            : T.autoJoinPace(used);
+
+    return `${pace} ${T.autoJoinReturns(MAX_FORCED_RETURNS)}`;
+}
 
 export type MagnetResult = "on" | "off" | "cooling";
 

@@ -9,7 +9,10 @@
 .vr-dim,
 .vr-badge,
 .vr-setting,
-.vr-cards {
+.vr-cards,
+.vr-confirm-host,
+.vr-menu-host,
+.vr-toast-host {
     --vr-bg: var(--background-base-lower, var(--background-tertiary, #1e1f22));
     --vr-raised: var(--background-base-low, var(--background-secondary, #232428));
     --vr-card: var(--background-surface-high, var(--background-secondary-alt, #2b2d31));
@@ -97,6 +100,83 @@
 .vr-window.vr-window-embedded.vr-window-lg {
     height: auto;
     max-height: 76vh;
+}
+
+/* The title drags the window, the edges and corners resize it. */
+.vr-window-movable .vr-head {
+    cursor: grab;
+}
+
+.vr-resize {
+    position: absolute;
+    z-index: 3;
+    touch-action: none;
+}
+
+.vr-resize-n,
+.vr-resize-s {
+    left: 14px;
+    right: 14px;
+    height: 6px;
+    cursor: ns-resize;
+}
+
+.vr-resize-e,
+.vr-resize-w {
+    top: 14px;
+    bottom: 14px;
+    width: 6px;
+    cursor: ew-resize;
+}
+
+.vr-resize-n { top: 0; }
+.vr-resize-s { bottom: 0; }
+.vr-resize-e { right: 0; }
+.vr-resize-w { left: 0; }
+
+.vr-resize-ne,
+.vr-resize-nw,
+.vr-resize-se,
+.vr-resize-sw {
+    width: 14px;
+    height: 14px;
+}
+
+.vr-resize-ne { top: 0; right: 0; cursor: nesw-resize; }
+.vr-resize-sw { bottom: 0; left: 0; cursor: nesw-resize; }
+.vr-resize-nw { top: 0; left: 0; cursor: nwse-resize; }
+.vr-resize-se { bottom: 0; right: 0; cursor: nwse-resize; }
+
+/* A quiet grip in the corner, so the window reads as resizable. */
+.vr-resize-se::after {
+    content: "";
+    position: absolute;
+    right: 4px;
+    bottom: 4px;
+    width: 7px;
+    height: 7px;
+    border-right: 2px solid var(--vr-text-muted);
+    border-bottom: 2px solid var(--vr-text-muted);
+    border-bottom-right-radius: 3px;
+    opacity: 0.35;
+    transition: opacity 0.12s ease;
+}
+
+.vr-window-movable:hover .vr-resize-se::after {
+    opacity: 0.7;
+}
+
+/* Keeps the scrollbars clear of the right edge, which resizes. */
+.vr-window-movable .vr-list,
+.vr-window-movable .vr-window-body {
+    margin-right: 6px;
+}
+
+/* Covers everything while a window moves, so the cursor holds and nothing below lights up. */
+.vr-gesture-shield {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
 }
 
 .vr-window-body {
@@ -216,7 +296,8 @@
     color: var(--vr-text-muted);
 }
 
-.vr-close {
+.vr-close,
+.vr-head-button {
     flex: 0 0 auto;
     display: grid;
     place-items: center;
@@ -231,9 +312,297 @@
     transition: background-color 0.12s ease, color 0.12s ease;
 }
 
-.vr-close:hover {
+.vr-close:hover,
+.vr-head-button:hover {
     background: var(--vr-mod);
     color: var(--vr-text-strong);
+}
+
+.vr-head-button:focus-visible {
+    outline: 2px solid var(--vr-brand);
+    outline-offset: 1px;
+}
+
+.vr-head-button.vr-head-button-on,
+.vr-head-button.vr-head-button-on:hover {
+    background: var(--vr-brand-soft);
+    color: var(--vr-brand-text);
+}
+
+/* The radar in a Discord window of its own, which has no frame, so the title bar drags it. */
+.vr-window.vr-window-popout {
+    position: fixed;
+    inset: 0;
+    width: auto;
+    height: auto;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    animation: none;
+    color: var(--vr-text);
+    font-family: var(--font-primary, "gg sans", "Noto Sans", sans-serif);
+}
+
+.vr-window-popout .vr-head {
+    -webkit-app-region: drag;
+    user-select: none;
+}
+
+.vr-window-popout .vr-head button,
+.vr-window-popout .vr-head [role="button"] {
+    -webkit-app-region: no-drag;
+}
+
+/* A question asked inside the popped out radar, where Discord's own dialogs cannot appear. */
+.vr-confirm-host {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    color: var(--vr-text);
+    font-family: var(--font-primary, "gg sans", "Noto Sans", sans-serif);
+}
+
+.vr-confirm-backdrop {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    background: rgb(0 0 0 / 55%);
+    animation: vr-fade-in 0.12s ease both;
+}
+
+.vr-confirm {
+    width: min(440px, 100%);
+    padding: 20px 20px 16px;
+    border: 1px solid var(--vr-border);
+    border-radius: 14px;
+    background: var(--vr-card);
+    box-shadow: var(--vr-shadow);
+    animation: vr-window-in 0.16s var(--vr-ease) both;
+}
+
+.vr-confirm-title {
+    margin-bottom: 8px;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--vr-text-strong);
+}
+
+.vr-confirm-body {
+    font-size: 14px;
+    line-height: 1.45;
+}
+
+.vr-confirm-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 18px;
+}
+
+.vr-chip.vr-confirm-go,
+.vr-chip.vr-confirm-go:hover {
+    border-color: transparent;
+    background: var(--vr-brand);
+    color: #fff;
+}
+
+.vr-chip.vr-confirm-go.vr-confirm-danger,
+.vr-chip.vr-confirm-go.vr-confirm-danger:hover {
+    background: var(--vr-red);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .vr-confirm-backdrop,
+    .vr-confirm {
+        animation: none;
+    }
+}
+
+/* The plugin's messages at the bottom of the popped out radar, where Discord's toasts do not reach. */
+.vr-toast-host {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 18px;
+    z-index: 30;
+    display: flex;
+    justify-content: center;
+    padding: 0 16px;
+    pointer-events: none;
+    font-family: var(--font-primary, "gg sans", "Noto Sans", sans-serif);
+}
+
+.vr-toast {
+    max-width: min(520px, 100%);
+    padding: 10px 14px;
+    border: 1px solid var(--vr-border-strong);
+    border-radius: 10px;
+    background: var(--vr-floating);
+    box-shadow: var(--vr-shadow);
+    color: var(--vr-text-strong);
+    font-size: 14px;
+    line-height: 1.4;
+    animation: vr-hint-in 0.16s var(--vr-ease) both;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.vr-toast-success {
+    border-color: color-mix(in srgb, var(--vr-green) 45%, transparent);
+}
+
+.vr-toast-failure {
+    border-color: color-mix(in srgb, var(--vr-red) 50%, transparent);
+}
+
+.vr-toast-leaving {
+    opacity: 0;
+    transform: translateY(4px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .vr-toast {
+        animation: none;
+        transition: none;
+    }
+}
+
+/* The plugin's own small menu, drawn in whichever window the button sits in. */
+.vr-menu-host {
+    position: fixed;
+    inset: 0;
+    z-index: 1003;
+    pointer-events: none;
+    color: var(--vr-text);
+    font-family: var(--font-primary, "gg sans", "Noto Sans", sans-serif);
+}
+
+.vr-menu {
+    position: fixed;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 220px;
+    max-width: 320px;
+    padding: 6px;
+    border: 1px solid var(--vr-border-strong);
+    border-radius: 10px;
+    background: var(--vr-floating);
+    box-shadow: var(--vr-shadow);
+    pointer-events: auto;
+    animation: vr-hint-in 0.12s var(--vr-ease) both;
+}
+
+.vr-menu-item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    width: 100%;
+    padding: 8px 10px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--vr-text);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+}
+
+.vr-menu-item:hover,
+.vr-menu-item:focus-visible {
+    outline: none;
+    background: var(--vr-brand);
+    color: #fff;
+}
+
+.vr-menu-hint {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--vr-text-muted);
+}
+
+.vr-menu-item:hover .vr-menu-hint,
+.vr-menu-item:focus-visible .vr-menu-hint {
+    color: rgb(255 255 255 / 80%);
+}
+
+.vr-menu-people {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.vr-menu-faces {
+    display: flex;
+    flex: 0 0 auto;
+}
+
+.vr-menu-face {
+    box-sizing: border-box;
+    width: 22px;
+    height: 22px;
+    margin-left: -6px;
+    border: 2px solid var(--vr-floating);
+    border-radius: 50%;
+    object-fit: cover;
+    background: var(--vr-floating);
+}
+
+.vr-menu-face:first-child {
+    margin-left: 0;
+}
+
+.vr-menu-face-more {
+    display: grid;
+    place-items: center;
+    background: color-mix(in srgb, var(--vr-text-muted) 45%, var(--vr-floating));
+    color: var(--vr-text-strong);
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.vr-menu-names {
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1.3;
+    color: var(--vr-text);
+}
+
+.vr-menu-item:hover .vr-menu-face,
+.vr-menu-item:focus-visible .vr-menu-face {
+    border-color: var(--vr-brand);
+}
+
+.vr-menu-item:hover .vr-menu-face-more,
+.vr-menu-item:focus-visible .vr-menu-face-more {
+    background: color-mix(in srgb, #000 25%, var(--vr-brand));
+    color: #fff;
+}
+
+.vr-menu-item:hover .vr-menu-names,
+.vr-menu-item:focus-visible .vr-menu-names {
+    color: #fff;
+}
+
+.vr-menu-item[aria-disabled="true"] {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.vr-menu-item[aria-disabled="true"]:hover {
+    background: transparent;
+    color: var(--vr-text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .vr-menu {
+        animation: none;
+    }
 }
 
 .vr-status {
@@ -693,11 +1062,6 @@
     flex: 0 0 auto;
 }
 
-.vr-health-action {
-    height: 30px;
-    margin-top: 14px;
-}
-
 .vr-list-hint {
     padding: 0 20px 8px;
     font-size: 12px;
@@ -768,7 +1132,6 @@
     font-weight: 500;
     line-height: 1.35;
     overflow-wrap: anywhere;
-    pointer-events: none;
     animation: vr-hint-in 0.09s ease-out both;
 }
 
@@ -805,6 +1168,32 @@
     color: var(--vr-text-muted);
 }
 
+.vr-hint:has(.vr-place-hint-split) {
+    max-width: 440px;
+}
+
+.vr-place-hint-heading {
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--vr-border, rgb(255 255 255 / 8%));
+    color: var(--vr-text-muted);
+    font-size: 12px;
+    white-space: normal;
+}
+
+.vr-place-hint-split {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+}
+
+.vr-place-hint-column {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
 .vr-vc-tooltip-channel {
     margin-bottom: 2px;
     font-weight: 700;
@@ -817,6 +1206,39 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+.vr-person {
+    margin: 0 -5px;
+    padding: 1px 5px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.vr-person:hover {
+    background: var(--vr-mod-strong);
+}
+
+.vr-you-tag {
+    display: inline-block;
+    flex: 0 0 auto;
+    margin: 0 5px;
+    padding: 0 5px;
+    border-radius: 4px;
+    background: var(--vr-brand);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 16px;
+    vertical-align: 1px;
+}
+
+.vr-stay-kind > .vr-you-tag:first-child {
+    margin-left: 0;
+}
+
+.vr-vc-tooltip-row > .vr-you-tag {
+    margin: 0;
 }
 
 .vr-tip-avatar {

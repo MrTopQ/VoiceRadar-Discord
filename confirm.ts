@@ -31,7 +31,21 @@ export interface ConfirmOptions {
     onConfirm: () => void;
 }
 
+/** Asks inside the popped out radar when that window is in use, and says whether it did. */
+let askInOwnWindow: ((options: ConfirmOptions) => boolean) | null = null;
+
+export function setOwnWindowConfirm(ask: ((options: ConfirmOptions) => boolean) | null) {
+    askInOwnWindow = ask;
+}
+
 export function confirmFirst(options: ConfirmOptions): boolean {
+    // Discord draws its dialogs only in its main window, out of sight of the popped out radar.
+    try {
+        if (askInOwnWindow?.(options)) return true;
+    } catch (error) {
+        console.warn("[VoiceRadar-Discord] could not ask inside the radar window:", error);
+    }
+
     try {
         const show = (Common as any).Alerts?.show;
         if (typeof show !== "function") throw new Error("Alerts.show is gone");

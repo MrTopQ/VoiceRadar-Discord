@@ -27,9 +27,9 @@ import { toast, ToastType } from "./toast";
 const PULL_COOLDOWN_MS = 300;
 const USER_WINDOW_MS = 60_000;
 
-const MAX_RETURNS_PER_MINUTE = 10;
+export const MAX_RETURNS_PER_MINUTE = 10;
 
-const GIVE_UP_COOLDOWN_MS = 30_000;
+export const GIVE_UP_COOLDOWN_MS = 30_000;
 const gaveUpAt = new Map<string, number>();
 
 export function magnetCooldownLeft(userId: string): number {

@@ -29,6 +29,8 @@ export const cl = classNameFactory("vr-");
 interface ActionButtonProps {
     icon: ReactNode;
     tooltip: string;
+    /** A second, quieter line under the tooltip, such as a limit. */
+    note?: string;
     onClick: (event: MouseEvent) => void;
     active?: boolean;
     danger?: boolean;
@@ -37,7 +39,7 @@ interface ActionButtonProps {
     extraClass?: string;
 }
 
-export function ActionButton({ icon, tooltip, onClick, active, danger, warn, disabled, extraClass }: ActionButtonProps) {
+export function ActionButton({ icon, tooltip, note, onClick, active, danger, warn, disabled, extraClass }: ActionButtonProps) {
     const className = [
         cl("action"),
         active && cl("action-active"),
@@ -48,7 +50,7 @@ export function ActionButton({ icon, tooltip, onClick, active, danger, warn, dis
     ].filter(Boolean).join(" ");
 
     return (
-        <Hint text={tooltip}>
+        <Hint text={note ? <>{tooltip}<div className={cl("vc-tooltip-hint")}>{note}</div></> : tooltip}>
             {hintProps => (
                 <button
                     {...hintProps}
@@ -56,7 +58,7 @@ export function ActionButton({ icon, tooltip, onClick, active, danger, warn, dis
                     // Not the native disabled, so the hint explaining why still shows on hover.
                     aria-disabled={disabled}
                     tabIndex={disabled ? -1 : undefined}
-                    aria-label={tooltip}
+                    aria-label={note ? `${tooltip}. ${note}` : tooltip}
                     onClick={event => {
                         event.stopPropagation();
                         if (!disabled) onClick(event);

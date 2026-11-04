@@ -20,53 +20,43 @@ import { useForceUpdater } from "@utils/react";
 import { FluxDispatcher, React, useEffect } from "@webpack/common";
 
 import { channelLabel, getVoiceInfo, type VoiceInfo } from "../channels";
-import { spotlightChannel } from "../channelSpotlight";
 import { T } from "../i18n";
-import { moveLabel } from "../journalTimeline";
 import { lookupLink, openLookup } from "../lookup";
 import { canOpenModView, pickModViewGuild } from "../modView";
 import { DEFAULT_AVATAR_URL, getAvatarUrl, getUserDisplayName } from "../names";
 import { getPresenceInfo, type PresenceInfo } from "../presence";
 import { getProfileFacts, type GuildBadge, guildIconUrl, guildInitials, isLoadingMutualGuilds, loadMutualGuilds, type ProfileFacts } from "../profileFacts";
-import { getSightings, isTheirMove, type Sighting, startsTogether, togetherBefore } from "../sightings";
+import { getSightings, lastSeenTogether, MAX_SIGHTINGS_PER_PERSON, placeAfter, type Sighting } from "../sightings";
 import { getTrackedUser, type TrackedUser } from "../store";
 import { throttle } from "../throttle";
-import { formatRelativeTime } from "../time";
+import { calendarAge, dayStart, formatDayStamp, formatMoment, formatOnDay } from "../time";
 import { toast, ToastType } from "../toast";
-import { gapBetween, getWatchSpans, watchedThrough,type WatchSpan } from "../watchLog";
+import { getWatchSpans, watchedThrough } from "../watchLog";
 import { cl, StatusDot } from "./common";
 import { Hint } from "./Hint";
 import { ChevronDownIcon, ExternalIcon, ShieldIcon, SpeakerIcon } from "./icons";
+import { Journal, openChannelOrSay } from "./Journal";
 import { openModViewServerMenu, showModView } from "./ModViewMenu";
-import { closeAllWindows, closeWindow, openWindow, WindowHead } from "./Window";
+import { AvatarStack } from "./VoicePeople";
+import { closeWindow, openWindow, WindowHead } from "./Window";
 
 const INFO_WINDOW = "person-info";
 const REDRAW_THROTTLE_MS = 400;
 const LIVE_REFRESH_MS = 15_000;
-const DAY_MS = 24 * 60 * 60_000;
-const WEEK_MS = 7 * DAY_MS;
+const WEEK_DAYS = 7;
+const LIVE_AVATARS = 12;
 
 const pad = (value: number) => String(value).padStart(2, "0");
-
-const formatTime = (at: number) => `${pad(new Date(at).getHours())}:${pad(new Date(at).getMinutes())}`;
 
 function formatDate(at: number): string {
     const date = new Date(at);
     return `${pad(date.getDate())}.${pad(date.getMonth() + 1)}.${date.getFullYear()}`;
 }
 
+/** Counted on the calendar in whole units, so nothing is rounded up. */
 function formatAge(at: number): string {
-    const days = Math.floor((Date.now() - at) / DAY_MS);
-    if (days >= 365) return T.infoAgeYears(Math.floor(days / 365));
-    if (days >= 30) return T.infoAgeMonths(Math.floor(days / 30));
-    return T.infoAgeDays(Math.max(0, days));
-}
-
-function dayHeading(at: number): string {
-    const startOfToday = new Date().setHours(0, 0, 0, 0);
-    if (at >= startOfToday) return T.infoToday;
-    if (at >= startOfToday - DAY_MS) return T.infoYesterday;
-    return formatDate(at);
+    const { years, months, days } = calendarAge(at);
+    return T.infoAge(years, months, days);
 }
 
 const STATUS_LABELS: Record<string, () => string> = {
@@ -77,29 +67,25 @@ const STATUS_LABELS: Record<string, () => string> = {
     invisible: () => T.statusOffline
 };
 
-const KIND_LABELS: Record<Sighting["kind"], () => string> = {
-    joined: () => T.infoKindJoined,
-    moved: () => T.infoKindMoved,
-    left: () => T.infoKindLeft,
-    "you-joined": () => T.infoKindYouJoined,
-    "you-left": () => T.infoKindYouLeft
-};
+/**
+ * Since when the person surely sits where they are: from the line that brought them in, as far back as
+ * the plugin watched without a break. Only a join or a move gives the moment they came in.
+ */
+function liveDetail(voice: VoiceInfo, lines: Sighting[]): string {
+    const watched = getWatchSpans();
+    const now = Date.now();
+    let since: Sighting | null = null;
 
-/** Only when the plugin saw them sit there all along, since a closed Discord could have missed them leaving and coming back. */
-function inChannelSince(lines: Sighting[], channelId: string): number | null {
-    const latest = lines.find(isTheirMove);
-    if (latest?.channelId !== channelId) return null;
-    return watchedThrough(getWatchSpans(), latest.at, Date.now()) ? latest.at : null;
-}
-
-function openChannelOrSay(channelId: string | null) {
-    if (!channelId) {
-        toast(T.noChannelAccess, ToastType.FAILURE);
-        return;
+    for (const line of lines) {
+        if (placeAfter(line) !== voice.channelId || line.after != null || !watchedThrough(watched, line.at, now)) break;
+        since = line;
+        if (line.kind === "joined" || line.kind === "moved") break;
     }
 
-    closeAllWindows();
-    void spotlightChannel(channelId);
+    if (!since) return T.infoLivePeople(voice.memberCount);
+    return since.kind === "joined" || since.kind === "moved"
+        ? T.infoLiveSince(formatMoment(since.at, now))
+        : T.infoLiveFound(formatDayStamp(since.at, now));
 }
 
 function copyId(userId: string) {
@@ -108,7 +94,7 @@ function copyId(userId: string) {
         .catch(() => toast(T.infoIdCopyFailed, ToastType.FAILURE));
 }
 
-function LiveCard({ voice, since, user }: { voice: VoiceInfo | null; since: number | null; user: TrackedUser | undefined; }) {
+function LiveCard({ userId, voice, lines, user }: { userId: string; voice: VoiceInfo | null; lines: Sighting[]; user: TrackedUser | undefined; }) {
     if (!voice) {
         return (
             <div className={cl("info-live") + " " + cl("info-live-off")}>
@@ -133,9 +119,8 @@ function LiveCard({ voice, since, user }: { voice: VoiceInfo | null; since: numb
                 <SpeakerIcon />
                 {channelLabel(voice)}
             </div>
-            <div className={cl("dim")}>
-                {since != null ? T.infoLiveSince(formatRelativeTime(since)) : T.infoLivePeople(voice.memberCount)}
-            </div>
+            <div className={cl("dim")}>{liveDetail(voice, lines)}</div>
+            <AvatarStack ids={voice.participantIds.filter(id => id !== userId)} max={LIVE_AVATARS} />
         </div>
     );
 }
@@ -240,27 +225,41 @@ function MutualTile({ userId, facts, loading }: { userId: string; facts: Profile
     );
 }
 
-function Tiles({ userId, user, presence, lines, guildId }: {
+function lastTogetherValue(userId: string, user: TrackedUser | undefined, voice: VoiceInfo | null): string {
+    if (voice?.isMyChannel) return T.infoWithYouNow;
+    if (!user?.sharedVoice) return T.infoWithYouNever;
+    return formatOnDay(lastSeenTogether(userId, user.lastSeen), null);
+}
+
+/** Joins and moves the journal holds for the last seven days, which it only has while Discord runs. */
+function weekCounts(lines: Sighting[]): { joins: number; moves: number; } {
+    const from = dayStart(Date.now(), 1 - WEEK_DAYS);
+    const recent = lines.filter(line => (line.after ?? line.at) >= from);
+    return {
+        joins: recent.filter(line => line.kind === "joined").length,
+        moves: recent.filter(line => line.kind === "moved").length
+    };
+}
+
+function Tiles({ userId, user, presence, lines, voice }: {
     userId: string;
     user: TrackedUser | undefined;
     presence: PresenceInfo;
     lines: Sighting[];
-    guildId: string | null;
+    voice: VoiceInfo | null;
 }) {
-    const facts = getProfileFacts(userId, guildId);
+    const facts = getProfileFacts(userId, voice?.guildId ?? null);
     const friend = friendValue(facts);
-    const joinsThisWeek = lines.filter(line => isTheirMove(line) && Date.now() - line.at < WEEK_MS).length;
+    const week = weekCounts(lines);
 
     return (
         <div className={cl("info-grid")}>
             <Tile
                 label={T.infoWithYou}
-                value={user?.sharedVoice ? formatRelativeTime(user.lastSeen) : T.infoWithYouNever}
-                sub={user?.sharedVoice
-                    ? `${formatDate(user.lastSeen)}, ${formatTime(user.lastSeen)}${user.lastChannelName ? ` · ${user.lastChannelName}` : ""}`
-                    : undefined}
+                value={lastTogetherValue(userId, user, voice)}
+                sub={user?.sharedVoice && !voice?.isMyChannel ? user.lastChannelName ?? undefined : undefined}
             />
-            <Tile label={T.infoWeek} value={String(joinsThisWeek)} sub={T.infoWeekSub} />
+            <Tile label={T.infoWeek} value={T.infoWeekValue(week.joins, week.moves)} sub={T.infoWeekSub} />
             <Tile label={T.infoStatus} value={statusValue(presence)} sub={presence.activity ?? undefined} />
 
             {facts.createdAt != null && (
@@ -276,90 +275,6 @@ function Tiles({ userId, user, presence, lines, guildId }: {
             {friend && <Tile label={T.infoFriend} value={friend} />}
 
             <MutualTile userId={userId} facts={facts} loading={isLoadingMutualGuilds(userId)} />
-        </div>
-    );
-}
-
-function TogetherBadge({ line, together }: { line: Sighting; together: number | null; }) {
-    if (together != null) {
-        // A move names the new channel, while the time together was spent in the one before it.
-        const text = line.kind === "moved" ? T.infoTogetherBefore : T.infoTogether;
-        return <span className={cl("badge") + " " + cl("badge-here")}>{text(Math.floor(together / 60_000))}</span>;
-    }
-    if (line.kind !== "you-joined" && startsTogether(line)) return <span className={cl("badge") + " " + cl("badge-here")}>{T.infoCameToYou}</span>;
-    return null;
-}
-
-function GapLine({ gap }: { gap: WatchSpan; }) {
-    const sameDay = new Date(gap.start).toDateString() === new Date(gap.end).toDateString();
-    const stamp = (at: number) => sameDay ? formatTime(at) : `${formatDate(at)} ${formatTime(at)}`;
-
-    return <div className={cl("info-gap")}>{T.infoGap(stamp(gap.start), stamp(gap.end))}</div>;
-}
-
-function SightingLine({ line, together }: { line: Sighting; together: number | null; }) {
-    const where = line.channelLabel ?? T.unknownChannel;
-
-    return (
-        <div className={cl("info-line")}>
-            <span className={cl("info-dot") + " " + cl("info-dot-" + line.kind)} />
-            <span className={cl("info-when")} title={`${formatDate(line.at)}, ${formatTime(line.at)}`}>
-                {formatTime(line.at)}
-            </span>
-            <span className={cl("info-kind") + " " + cl("info-kind-" + line.kind)}>{KIND_LABELS[line.kind]()}</span>
-            <span
-                className={cl("info-where")}
-                role="button"
-                tabIndex={0}
-                onClick={() => openChannelOrSay(line.channelId)}
-            >
-                {line.kind === "moved" ? moveLabel(line.fromLabel, where) : where}
-            </span>
-            <TogetherBadge line={line} together={together} />
-        </div>
-    );
-}
-
-function Journal({ lines }: { lines: Sighting[]; }) {
-    if (!lines.length) {
-        return (
-            <div className={cl("info-empty")}>
-                <div className={cl("info-empty-title")}>{T.infoLogEmptyTitle}</div>
-                <div className={cl("dim")}>{T.infoLogEmpty}</div>
-            </div>
-        );
-    }
-
-    const watched = getWatchSpans();
-
-    const days: { start: number; entries: { line: Sighting; together: number | null; gap: WatchSpan | null; }[]; }[] = [];
-    lines.forEach((line, index) => {
-        const start = new Date(line.at).setHours(0, 0, 0, 0);
-        const last = days[days.length - 1];
-        const older = lines[index + 1];
-        const entry = {
-            line,
-            together: togetherBefore(lines, index, watched),
-            gap: older ? gapBetween(watched, older.at, line.at) : null
-        };
-
-        if (last?.start === start) last.entries.push(entry);
-        else days.push({ start, entries: [entry] });
-    });
-
-    return (
-        <div className={cl("info-log")}>
-            {days.map(day => (
-                <div key={day.start} className={cl("info-day")}>
-                    <div className={cl("info-day-heading")}>{dayHeading(day.start)}</div>
-                    {day.entries.map(({ line, together, gap }) => (
-                        <React.Fragment key={`${line.at}-${line.kind}`}>
-                            <SightingLine line={line} together={together} />
-                            {gap && <GapLine gap={gap} />}
-                        </React.Fragment>
-                    ))}
-                </div>
-            ))}
         </div>
     );
 }
@@ -396,8 +311,6 @@ function PersonInfo({ userId, embedded, onClose }: { userId: string; embedded: b
     const lines = getSightings(userId);
     const facts = getProfileFacts(userId, null);
 
-    const since = voice ? inChannelSince(lines, voice.channelId) : null;
-
     return (
         <>
             <WindowHead
@@ -428,12 +341,15 @@ function PersonInfo({ userId, embedded, onClose }: { userId: string; embedded: b
             />
 
             <div className={cl("window-body")}>
-                <LiveCard voice={voice} since={since} user={user} />
+                <LiveCard userId={userId} voice={voice} lines={lines} user={user} />
 
-                <Tiles userId={userId} user={user} presence={presence} lines={lines} guildId={voice?.guildId ?? null} />
+                <Tiles userId={userId} user={user} presence={presence} lines={lines} voice={voice} />
 
-                <div className={cl("info-section-title")}>{T.infoLogTitle(lines.length)}</div>
-                <Journal lines={lines} />
+                <div className={cl("info-section-title")}>
+                    {T.infoLogTitle(lines.length, MAX_SIGHTINGS_PER_PERSON)}
+                    <span className={cl("info-section-note")}>{T.infoLogOrder}</span>
+                </div>
+                <Journal key={userId} lines={lines} userId={userId} />
             </div>
         </>
     );

@@ -19,7 +19,7 @@
 import { proveWorking, reportBroken } from "./apiHealth";
 import { T } from "./i18n";
 
-export const USER_MENUS = ["user-context", "user-profile-actions"];
+export const USER_MENUS = ["user-context", "user-profile-actions", "user-profile-overflow-menu"];
 export const CHANNEL_MENUS = ["channel-context"];
 
 /** Three menus about a person or a voice channel under a name we do not patch mean Discord renamed ours. */

@@ -105,7 +105,7 @@ export const settings = definePluginSettings({
         get description() {
             return T.settingAutoJoinCooldown;
         },
-        default: 5
+        default: 0
     },
     joinAlert: {
         type: OptionType.SELECT,
@@ -228,6 +228,11 @@ export const settings = definePluginSettings({
         },
         default: false,
         onChange: () => void import("./globalHotkey").then(module => module.syncGlobalHotkey())
+    },
+    // Not shown in the settings, it holds where each window was dragged to.
+    windowPlaces: {
+        type: OptionType.CUSTOM,
+        default: {}
     }
 });
 
@@ -247,6 +252,15 @@ export function migrateJoinAlert() {
 
     delete store.joinSound;
     delete store.notifyStyle;
+}
+
+/** Vencord saves a default the first time it is read, so the old 5 seconds sit in everybody's settings. Runs once, so 5 can still be chosen by hand. */
+export function migrateAutoJoinCooldown() {
+    const store = settings.store as any;
+    if (store.autoJoinCooldownMoved) return;
+
+    if (Number(store.autoJoinCooldown) === OLD_DEFAULT_COOLDOWN_SECONDS) store.autoJoinCooldown = 0;
+    store.autoJoinCooldownMoved = true;
 }
 
 export function getJoinAlert(): string {
@@ -277,15 +291,21 @@ export function getHistoryLimit(): number {
     return Math.min(MAX_HISTORY_LIMIT, Math.max(MIN_HISTORY_LIMIT, Math.floor(raw)));
 }
 
-/** Switching channels is a gateway event, so even 0 seconds keeps a floor. */
-const MIN_AUTO_JOIN_GAP_MS = 2000;
+/** 0 follows at once, nobody hops channels faster than a person can click anyway. */
+export const MIN_AUTO_JOIN_GAP_MS = 0;
 
-const MAX_AUTO_JOIN_GAP_MS = 5 * 60_000;
+export const MAX_AUTO_JOIN_GAP_MS = 5 * 60_000;
+
+const DEFAULT_AUTO_JOIN_GAP_MS = 0;
+
+const OLD_DEFAULT_COOLDOWN_SECONDS = 5;
+
+/** What the setting holds, before the floor and the ceiling. */
+export function getAutoJoinCooldownSettingMs(): number {
+    const raw = Number(settings.store.autoJoinCooldown);
+    return Number.isFinite(raw) && raw >= 0 ? Math.floor(raw * 1000) : DEFAULT_AUTO_JOIN_GAP_MS;
+}
 
 export function getAutoJoinCooldownMs(): number {
-    const raw = Number(settings.store.autoJoinCooldown);
-    if (!Number.isFinite(raw) || raw < 0) return 5000;
-
-    const wanted = Math.floor(raw * 1000);
-    return Math.min(MAX_AUTO_JOIN_GAP_MS, Math.max(MIN_AUTO_JOIN_GAP_MS, wanted));
+    return Math.min(MAX_AUTO_JOIN_GAP_MS, Math.max(MIN_AUTO_JOIN_GAP_MS, getAutoJoinCooldownSettingMs()));
 }

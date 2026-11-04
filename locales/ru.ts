@@ -21,6 +21,8 @@ import { pluralRu } from "./plural";
 
 /** Display names have no grammatical gender, so text about a person avoids gendered words. */
 const people = (count: number) => pluralRu(count, "человек", "человека", "человек");
+const secondsRu = (count: number) => (Number.isInteger(count) ? pluralRu(count, "секунду", "секунды", "секунд") : "секунды");
+const numberRu = (value: number) => String(value).replace(".", ",");
 const slots = (count: number) => pluralRu(count, "свободный слот", "свободных слота", "свободных слотов");
 const duration = (minutes: number) => minutes < 1
     ? "меньше минуты"
@@ -41,7 +43,7 @@ export const ru: Messages = {
     settingHotkeyInvalid: "Нужна собственная клавиша, а не только модификаторы. Например, Alt+2 или Ctrl+Shift+V",
     settingSilentJoin: "Выключать микрофон при автовходе. Действует при любом входе, который плагин делает за вас: быстрый переход, автозаход или занятый слот из очереди",
     settingAutoJoinOnlyWhenIdle: "Следовать за целью автозахода, только когда вы сами не в голосовом канале (никогда не выдёргивает вас из текущего разговора)",
-    settingAutoJoinCooldown: "Пауза между автозаходами, в секундах. Ноль означает максимально быстро",
+    settingAutoJoinCooldown: "Пауза между автозаходами, в секундах, от 0 до 300. 0 значит заходить сразу",
     settingJoinAlert: "Когда человек с колокольчиком заходит в голосовой канал. Пока вы в Discord, в углу появляется карточка, а когда Discord в фоне, вдобавок приходит уведомление Windows. Звук слышен и поверх полноэкранной игры",
     joinAlertChime: "Уведомление со звуком плагина",
     joinAlertCustom: "Уведомление со своим звуком",
@@ -113,8 +115,44 @@ export const ru: Messages = {
     /* ── окно за индикатором состояния ───────────────────────────────────────────────────── */
     healthTitle: "Что работает",
 
-    healthGroupFeatures: "Все функции и есть ли у Discord то, на чём они держатся",
-    healthGroupAround: "Вокруг плагина",
+    healthRecheck: "Проверить заново",
+    healthChecked: (when: string) => `Проверено ${when}`,
+    healthSummaryGood: "Всё работает",
+    healthSummaryStarting: "Почти готово, плагин ещё запускается",
+    healthSummaryIssues: (count: number) =>
+        `${count} ${pluralRu(count, "пункт требует", "пункта требуют", "пунктов требуют")} внимания`,
+    healthSummaryCounts: (counts: Record<"good" | "off" | "pending" | "waiting" | "bad", number>) => [
+        counts.good && `${counts.good} ${pluralRu(counts.good, "работает", "работают", "работают")}`,
+        counts.off && `${counts.off} ${pluralRu(counts.off, "выключена", "выключены", "выключено")} в настройках`,
+        counts.pending && `${counts.pending} ${pluralRu(counts.pending, "ждёт", "ждут", "ждут")}`,
+        counts.waiting && `${counts.waiting} частично`,
+        counts.bad && `${counts.bad} ${pluralRu(counts.bad, "сломана", "сломаны", "сломано")}`
+    ].filter(Boolean).join(", "),
+    healthAttention: "Нужно внимание",
+    healthGroups: {
+        voice: "Голос",
+        people: "Люди",
+        join: "Вход в каналы",
+        windows: "Окна и меню",
+        moderation: "Модерация",
+        alerts: "Уведомления",
+        system: "Discord и система"
+    } as Record<string, string>,
+    healthGroupCount: (working: number, total: number) => `${working} из ${total}`,
+    healthPill: {
+        good: "работает",
+        off: "выключено",
+        pending: "ждёт",
+        waiting: "частично",
+        bad: "сломано"
+    } as Record<string, string>,
+    healthOpenSetting: "Открыть настройку",
+    healthFixUpdate: "Скорее всего Discord обновился и сдвинул то, на чём это держится. Обновите плагин и перезапустите Discord, а если не помогло, напишите автору.",
+    healthFixServersCapped: "Поднимите в настройках лимит серверов, за которыми следит плагин.",
+    healthFixNotifyDenied: "Откройте Параметры Windows, раздел Уведомления, и включите их для Discord, потом нажмите «Проверить заново». "
+        + "Или оставьте оповещение только внутри Discord.",
+    healthFixVoiceQuiet: "Если за это время никто не заходил и не выходил, всё в порядке. Если люди двигаются, а событий нет, перезапустите Discord.",
+    healthFixListLost: "Перезапустите Discord, и сохранённый список прочитается заново. Сам он не тронут.",
 
     healthFeatureBroken: (parts: string) => `Не работает, обновление Discord это сдвинуло. ${parts}`,
     healthFeatureWeak: (parts: string) => `Работает слабее, чем должно, обновление Discord это сдвинуло. ${parts}`,
@@ -184,7 +222,7 @@ export const ru: Messages = {
     healthHotkeyTitle: "Горячая клавиша",
     healthNotifyTitle: "Уведомления",
     healthNotifyReady: "Windows разрешает Discord их показывать, значит заход дойдёт до вас вне приложения.",
-    healthNotifyDenied: "Уведомления запрещены, поэтому вне Discord вы ничего не увидите. Разрешите их для Discord в настройках системы.",
+    healthNotifyDenied: "Уведомления запрещены, поэтому вне Discord вы ничего не увидите.",
     healthNotifyAsk: "Разрешение ещё не спрашивали, его запросит первое же уведомление.",
     healthNotifyToastOnly: "Показываются только внутри Discord, поэтому система на них никак не влияет.",
     healthNotifyStyle: (label: string) => `Способ показа, ${label}.`,
@@ -207,9 +245,7 @@ export const ru: Messages = {
         `Прямо сейчас люди сидят в голосовых на ${guilds} ${pluralRu(guilds, "сервере", "серверах", "серверах")}, `
         + `всего ${states} ${people(states)}. Событий пока не было.`,
     healthVoiceNone: "Discord ещё не отдал ни одного голосового состояния.",
-    healthBuildTitle: "Сборка Discord",
     healthBuildLine: (channel: string, build: string) => `Канал ${channel}, сборка ${build}.`,
-    healthBuildUnknown: "Discord не говорит, какая у него сборка. На работу плагина это не влияет.",
 
     /* ── окно радара ─────────────────────────────────────────────────────────────────────── */
     searchPlaceholder: "Поиск людей…",
@@ -227,6 +263,7 @@ export const ru: Messages = {
     foundNone: "Больше никого с таким ником в голосовых каналах нет",
     foundMore: (count: number) => `И ещё ${count} ${pluralRu(count, "человек", "человека", "человек")}, уточните ник`,
     badgeTracked: "В РАДАРЕ",
+    foundPull: "Перетащить к себе в канал и добавить в радар",
     closeWindow: "Закрыть",
     windowCrashed: "Окно Voice Radar наткнулось на ошибку и закрылось. Подробности в консоли (Ctrl+Shift+I)",
     filterLabel: "Кого показывать",
@@ -239,22 +276,46 @@ export const ru: Messages = {
     infoButton: "информация",
     infoWindowLabel: "Информация",
     infoButtonHint: "Всё о человеке, где бывает и когда заходил",
-    infoWithYou: "Последний раз с вами",
+    infoWithYou: "Последний раз видели вместе",
+    infoWithYouNow: "сейчас, вы вместе",
     infoWithYouNever: "ни разу не сидели вместе",
-    infoWeek: "За неделю",
+    infoWeek: "За 7 дней",
+    infoWeekValue: (joins: number, moves: number) =>
+        `${joins} ${pluralRu(joins, "вход", "входа", "входов")} · ${moves} ${pluralRu(moves, "переход", "перехода", "переходов")}`,
     infoStatus: "Статус",
     infoStatusUnknown: "Discord не сообщил",
-    infoLogTitle: (count: number) => `Журнал, ${count} ${pluralRu(count, "запись", "записи", "записей")}`,
+    infoLogTitle: (count: number, limit: number) => `Журнал, ${count} из ${limit} ${pluralRu(limit, "записи", "записей", "записей")}`,
+    infoLogOrder: "новое сверху, стрелки показывают порядок",
+    infoPause: (minutes: number) => `в голосовых не видно ${duration(minutes)}`,
     infoLogEmpty: "Пока пусто. С этого момента сюда попадает каждый заход, переход и выход.",
     infoKindJoined: "Вход",
-    infoKindMoved: "Переход",
+    infoKindMovedFrom: (place: string) => `Сюда из «${place}»`,
+    infoKindMovedTo: (place: string) => `Отсюда в «${place}»`,
     infoKindLeft: "Выход",
-    infoKindYouJoined: "Вы зашли",
-    infoKindYouLeft: "Вы вышли",
+    youTag: "Вы",
+    infoKindYouJoined: "зашли",
+    infoKindYouLeft: "вышли",
     infoCameToYou: "к вам",
     infoTogether: together,
-    infoGap: (from: string, to: string) => `нет данных ${from} – ${to}, Discord был закрыт или без сети`,
-    infoTogetherBefore: (minutes: number) => `до этого ${together(minutes)}`,
+    infoTogetherSince: (time: string, minutes: number) => `вместе с ${time} · ${duration(minutes)}`,
+    infoKindSeen: "Уже там",
+    infoKindSeenAgain: "Всё ещё тут",
+    infoKindStreamOn: "Стрим",
+    infoKindStreamOff: "Конец стрима",
+    infoKindVideoOn: "Камера",
+    infoKindVideoOff: "Без камеры",
+    infoSeenWithYou: "с вами",
+    infoAfterConnect: "после подключения Discord",
+    infoBetween: (from: string, to: string) => `между ${from} и ${to}`,
+    infoGoneTitle: (noticed: string) => `Точный момент неизвестен. Плагин заметил, что человека нет, в ${noticed}`,
+    infoLateTitle: "Discord прислал это после обрыва связи, поэтому точный момент неизвестен",
+    infoLasted: duration,
+    infoShowMore: (count: number) => `Показать ещё, скрыто ${count} ${pluralRu(count, "запись", "записи", "записей")}`,
+    journalThen: "Тогда там были",
+    journalStayed: "Там остались",
+    journalStayedNobody: "Никого не осталось",
+    journalNow: "Сейчас там",
+    journalNowEmpty: "Сейчас там никого",
     infoCreated: "Аккаунт создан",
     infoBot: "БОТ",
     infoFriend: "В друзьях",
@@ -269,16 +330,21 @@ export const ru: Messages = {
     infoIdCopyFailed: "Не удалось скопировать ID",
     infoYes: "да",
     infoNo: "нет",
-    infoAgeYears: (count: number) => `${count} ${pluralRu(count, "год", "года", "лет")} назад`,
-    infoAgeMonths: (count: number) => `${count} ${pluralRu(count, "месяц", "месяца", "месяцев")} назад`,
-    infoAgeDays: (count: number) => count ? `${count} ${pluralRu(count, "день", "дня", "дней")} назад` : "сегодня",
+    infoAge: (years: number, months: number, days: number) => {
+        const unit = (count: number, one: string, few: string, many: string) => (count ? `${count} ${pluralRu(count, one, few, many)}` : "");
+        const parts = years ? [unit(years, "год", "года", "лет"), unit(months, "месяц", "месяца", "месяцев")]
+            : months ? [unit(months, "месяц", "месяца", "месяцев"), unit(days, "день", "дня", "дней")]
+                : [days ? unit(days, "день", "дня", "дней") : "меньше дня"];
+        return parts.filter(Boolean).join(" ");
+    },
     infoLiveTitle: "Сейчас в голосовом",
-    infoLiveSince: (since: string) => `вход ${since}`,
+    infoLiveSince: (when: string) => `вход ${when}`,
+    infoLiveFound: (when: string) => `в канале с ${when} или раньше`,
     infoLivePeople: (count: number) => `в канале ${count} ${pluralRu(count, "человек", "человека", "человек")}`,
     infoOfflineTitle: "Сейчас не в голосовом",
     infoOfflineLast: (channel: string) => `последний раз в ${channel}`,
     infoAtLeast: (count: number) => `не меньше ${count}`,
-    infoWeekSub: "заходов и переходов",
+    infoWeekSub: "пока Discord был включён",
     infoToday: "Сегодня",
     infoYesterday: "Вчера",
     infoLogEmptyTitle: "Перемещений пока нет",
@@ -328,10 +394,10 @@ export const ru: Messages = {
 
     notInVoice: "Не в голосовом",
     lastChannel: (channel: string) => `, последний ${channel}`,
-    leftAgo: (when: string, channel: string | null) =>
+    leftAt: (when: string, channel: string | null) =>
         channel ? `Не в голосовом, выход ${when} из ${channel}` : `Не в голосовом, выход ${when}`,
-    seenAgo: (when: string) => `виделись ${when}`,
-    addedAgo: (when: string) => `добавлен ${when}`,
+    seenAt: (when: string) => `виделись ${when}`,
+    addedAt: (when: string) => `добавлен ${when}`,
 
     tooltipInVoiceChat: "В голосовом канале",
     tooltipAndMore: (count: number) => `+${count} ещё`,
@@ -350,6 +416,16 @@ export const ru: Messages = {
     magnetIdleOtherGuild: "Магнит включён и простаивает, человек на другом сервере, Discord не может перенести его сюда",
     magnetIdleTargetOffline: "Магнит включён и ждёт, человека пока нет в голосовом канале",
     magnetActive: "Магнит включён, при любом уходе человека возвращает к вам",
+    magnetLimit: (returns: number, seconds: number) =>
+        `Не больше ${returns} ${pluralRu(returns, "возврата", "возвратов", "возвратов")} в минуту. Если человек уходит чаще, магнит снимается сам, `
+        + `и снова его можно включить через ${seconds} ${secondsRu(seconds)}. Эти числа не настраиваются`,
+    autoJoinPace: (seconds: number) =>
+        `Заходит не чаще раза в ${numberRu(seconds)} ${secondsRu(seconds)}. Эту паузу можно поменять в настройках плагина.`,
+    autoJoinNoPause: "Заходит сразу, без паузы. Паузу можно поставить в настройках плагина.",
+    autoJoinPaceCeiling: (set: number, used: number) =>
+        `В настройках пауза на ${numberRu(set)} ${secondsRu(set)}, но плагин ждёт самое большее ${numberRu(used)} ${secondsRu(used)}.`,
+    autoJoinReturns: (returns: number) =>
+        `Если вас выкинули или перетащили, возвращает до ${returns} раз в минуту, это число не настраивается`,
 
 
     joinNotInVoice: "Не в голосовом канале",
@@ -357,6 +433,7 @@ export const ru: Messages = {
     joinNoPermission: "Нет прав на вход в этот канал",
     joinQueued: "Ждём свободный слот, клик отменяет",
     joinChannelFull: "Канал заполнен, клик ставит вас в ожидание свободного слота",
+    joinFullWithRights: "Канал заполнен, но у вас есть право «Перемещать участников», поэтому войти можно сверх лимита",
     joinMuted: "Перейти (без микрофона)",
     join: "Перейти",
 
@@ -455,11 +532,31 @@ export const ru: Messages = {
     restartConfirmBody: "Вы в голосовом канале, и на время перезапуска звонок прервётся.",
     restartConfirmButton: "Перезапустить",
     restartByHand: "Отсюда перезапустить не вышло. Закройте Discord через трей и откройте снова",
+    popOut: "Вынести в отдельное окно. Его можно утащить куда угодно, хоть на другой монитор, а Discord рядом работает как обычно",
+    popIn: "Вернуть радар в Discord",
+    popoutMinimize: "Свернуть",
+    popoutOnTop: "Держать поверх всех окон",
+    popoutOnTopOn: "Поверх всех окон, нажмите, чтобы выключить",
+    popoutFailed: "Discord не открыл отдельное окно, радар остаётся внутри Discord",
     lookupFailed: "Не удалось открыть сайт в браузере",
     menuHistory: "Информация в Voice Radar",
     menuTrackChannel: (count: number) => `Добавить в радар всех отсюда (${count})`,
     menuPullEveryoneHere: "Перетащить всех отсюда в мой канал",
+    menuMoveGroupHere: "Переехать сюда всей компанией",
+    menuMoveGroupTo: (channel: string) => `Переехать всей компанией в ${channel}`,
 
+    pullMoreHint: "Перетащить больше",
+    peopleThere: (count: number) => `там ${count} ${people(count)}`,
+    groupMoveHint: (count: number) => (count ? `вы и ещё ${count} ${people(count)} из вашего канала` : "только вы, в вашем канале больше никого"),
+    pullSomeOfThem: (moving: number, there: number) => `переместятся ${moving} из ${there}`,
+    pullNobodyMovable: "отсюда переместить некого",
+    menuYou: "Вы",
+    listNames: (names: readonly string[], hidden: number) => hidden
+        ? `${names.join(", ")} и ещё ${hidden}`
+        : names.length > 1 ? `${names.slice(0, -1).join(", ")} и ${names[names.length - 1]}` : names[0] ?? "",
+    returnMoreHint: "Вернуть больше",
+    returnAllLabel: "Вернуть всех перетащенных по своим каналам",
+    peopleCount: (count: number) => `${count} ${people(count)}`,
     userAddedToRadar: (name: string) => `Voice Radar теперь следит за ${name}`,
     userRemovedFromRadar: (name: string) => `Voice Radar больше не следит за ${name}`,
     addedToRadar: (count: number) =>
@@ -535,6 +632,18 @@ export const ru: Messages = {
         + `в ваш канал, примерно за ${seconds} ${pluralRu(seconds, "секунду", "секунды", "секунд")}. `
         + "Каждое перемещение оставляет строку в журнале аудита сервера.",
     pullConfirmButton: (count: number) => `Перенести ${count}`,
+    pullConfirmWho: (names: string) => `Переместятся ${names}.`,
+    groupMoveConfirmWho: (names: string) => `С вами переедут ${names}.`,
+    groupMoveConfirmTitle: "Переехать всей компанией?",
+    groupMoveConfirmBody: (count: number, where: string, seconds: number) =>
+        `${count} ${people(count)} из вашего канала ${pluralRu(count, "переедет", "переедут", "переедут")} в ${where}, а вы следом, `
+        + `примерно за ${seconds} ${pluralRu(seconds, "секунду", "секунды", "секунд")}. `
+        + "Каждое перемещение оставляет строку в журнале аудита сервера.",
+    groupMoveConfirmButton: (count: number) => `Перевести ${count}`,
+    groupMoved: (count: number, where: string) => `Вы и ещё ${count} ${people(count)} теперь в ${where}`,
+    groupMovedPartly: (count: number, where: string, left: number) =>
+        `В ${where} ${pluralRu(count, "переехал", "переехали", "переехали")} ${count} ${people(count)}, `
+        + `${left} ${pluralRu(left, "остался", "осталось", "осталось")} на месте. Нажмите ещё раз для остальных`,
     noMovePermissionHere: (where: string) =>
         `Нет права «Перемещать участников» в ${where}, оттуда никого не забрать`,
     pulledUsers: (count: number, where: string) =>
@@ -583,6 +692,7 @@ export const ru: Messages = {
     apiModViewKind: "номер окна модератора в Discord, взят по памяти и может не совпасть",
     apiModViewMenu: "список серверов для окна модератора (ContextMenuApi)",
     apiModViewBypass: "обход проверки прав у окна модератора (тот же патч, что в ShowHiddenThings), без него Discord закрывает окно там, где у вас нет прав",
+    apiPopout: "отдельное окно радара (PopoutWindowStore и событие POPOUT_WINDOW_OPEN), без него радар открывается только внутри Discord",
     apiUserMenu: "меню Discord по правому клику на человеке (UserGenericContextMenu, GuildChannelUserContextMenu)",
     userMenuUnavailable: "Не удалось открыть меню Discord для этого человека, обновление его сдвинуло. Остальное работает",
     apiWindow: "само окно (createRoot, а запасным путём Modal), радар нельзя открыть",
@@ -600,6 +710,11 @@ export const ru: Messages = {
 
     /* ── относительное время ─────────────────────────────────────────────────────────────── */
     timeJustNow: "только что",
+    momentToday: (time: string) => `в ${time}`,
+    momentYesterday: (time: string) => `вчера в ${time}`,
+    momentOn: (date: string, time: string) => `${date} в ${time}`,
+    dayToday: (time: string) => `сегодня ${time}`,
+    dayYesterday: (time: string) => `вчера ${time}`,
     timeMinutes: (value: number) => `${value} мин назад`,
     timeHours: (value: number) => `${value} ч назад`,
     timeDays: (value: number) => `${value} дн назад`,

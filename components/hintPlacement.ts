@@ -32,17 +32,23 @@ export interface HintPlacement {
 export function placeHint(
     anchor: { left: number; top: number; width: number; height: number; },
     size: { width: number; height: number; },
-    viewportWidth: number
+    viewportWidth: number,
+    viewportHeight = Infinity
 ): HintPlacement {
-    const below = anchor.top - GAP_PX - size.height < TOP_RESERVED_PX;
+    const roomAbove = anchor.top - GAP_PX - TOP_RESERVED_PX;
+    const roomBelow = viewportHeight - (anchor.top + anchor.height + GAP_PX) - EDGE_PX;
+    // Above when it fits, otherwise on whichever side has more room.
+    const below = size.height > roomAbove && roomBelow > roomAbove;
     const centre = anchor.left + anchor.width / 2;
 
     const left = Math.max(EDGE_PX, Math.min(centre - size.width / 2, viewportWidth - size.width - EDGE_PX));
     const arrow = Math.min(Math.max(centre - left, ARROW_INSET_PX), Math.max(ARROW_INSET_PX, size.width - ARROW_INSET_PX));
+    const top = below ? anchor.top + anchor.height + GAP_PX : anchor.top - GAP_PX - size.height;
 
     return {
         left,
-        top: below ? anchor.top + anchor.height + GAP_PX : anchor.top - GAP_PX - size.height,
+        // A hint taller than either side is pushed back inside the window.
+        top: Math.max(TOP_RESERVED_PX, Math.min(top, viewportHeight - size.height - EDGE_PX)),
         below,
         arrow
     };

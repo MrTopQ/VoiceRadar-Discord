@@ -69,7 +69,21 @@ function dismissOurLastToast() {
     }
 }
 
+/** Shows the message inside the popped out radar when that window is in use, and says whether it did. */
+let showInOwnWindow: ((message: string, type: ToastKind) => boolean) | null = null;
+
+export function setOwnWindowToast(show: ((message: string, type: ToastKind) => boolean) | null) {
+    showInOwnWindow = show;
+}
+
 export function toast(message: string, type: ToastKind = ToastType.MESSAGE) {
+    // Discord shows its toasts only in its main window, out of sight of the popped out radar.
+    try {
+        if (showInOwnWindow?.(message, type)) return;
+    } catch (error) {
+        console.warn("[VoiceRadar-Discord] could not show a toast inside the radar window:", error);
+    }
+
     if (Date.now() - ourToastShownAt < REPLACE_WINDOW_MS) dismissOurLastToast();
 
     ourToastShownAt = Date.now();

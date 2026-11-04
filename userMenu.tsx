@@ -22,6 +22,7 @@ import type { ComponentType, MouseEvent } from "react";
 
 import { proveWorking, reportBroken } from "./apiHealth";
 import { getVoiceInfo } from "./channels";
+import { menuOptionsFor } from "./components/RadarPopout";
 import { T } from "./i18n";
 import { toast, ToastType } from "./toast";
 
@@ -86,11 +87,15 @@ export function openUserMenu(event: MouseEvent, userId: string) {
     event.preventDefault();
     if (!user) return;
 
+    // In the popped out radar the menu opens there, through the layer that window carries.
+    const options = menuOptionsFor(event.currentTarget);
+    if (options === null) return;
+
     const voice = getVoiceInfo(userId);
     const channel = voice?.guildId ? ChannelStore.getChannel(voice.channelId) as any : null;
     const kind: MenuKind = channel ? "voice" : "generic";
 
-    ContextMenuApi.openContextMenuLazy(event as any, async () => {
+    (ContextMenuApi as any).openContextMenuLazy(event, async () => {
         try {
             const Menu = await loadMenu(kind);
             proveWorking(T.apiUserMenu);
@@ -114,5 +119,5 @@ export function openUserMenu(event: MouseEvent, userId: string) {
             toast(T.userMenuUnavailable, ToastType.FAILURE);
             return (() => null) as any;
         }
-    });
+    }, options);
 }

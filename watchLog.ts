@@ -77,6 +77,23 @@ export function startWatch(at = Date.now()) {
     heartbeat ??= setInterval(() => touchWatch(), HEARTBEAT_MS);
 }
 
+/** Discord replays everything it missed when a connection resumes, so the watch before the drop simply goes on. */
+export function resumeWatch(now = Date.now()) {
+    if (watching) return;
+
+    const last = spans[spans.length - 1];
+    if (!last) {
+        startWatch(now);
+        return;
+    }
+
+    watching = true;
+    if (now > last.end) spans = [...spans.slice(0, -1), { ...last, end: now }];
+    scheduleSave();
+
+    heartbeat ??= setInterval(() => touchWatch(), HEARTBEAT_MS);
+}
+
 export function stopWatch(now = Date.now()) {
     if (!watching) return;
 
@@ -107,14 +124,6 @@ export function spanAt(watched: WatchSpan[], at: number): WatchSpan | null {
 export function watchedThrough(watched: WatchSpan[], from: number, to: number): boolean {
     const span = spanAt(watched, from);
     return span != null && to <= span.end;
-}
-
-/** The time between two journal lines the plugin did not see, when both lines fall inside known watches. */
-export function gapBetween(watched: WatchSpan[], older: number, newer: number): WatchSpan | null {
-    const before = spanAt(watched, older);
-    const after = spanAt(watched, newer);
-    if (!before || !after || before === after) return null;
-    return { start: before.end, end: after.start };
 }
 
 export async function loadWatchLog(): Promise<void> {

@@ -16,28 +16,29 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-import { Parser, React, useEffect, useState } from "@webpack/common";
+import { Parser, React, useEffect, UserStore, useState } from "@webpack/common";
 import type { ComponentType, ReactNode } from "react";
 
-import { toggleAutoJoinFor, toggleMagnetFor } from "../actions";
+import { describeAutoJoinPace, toggleAutoJoinFor, toggleMagnetFor } from "../actions";
 import { TtlCache } from "../cache";
-import { getMyChannelId, getMyGuildId, getVoiceInfo, type VoiceInfo } from "../channels";
+import { getChannelParticipantIds, getMyChannelId, getMyGuildId, getVoiceInfo, type VoiceInfo } from "../channels";
 import { spotlightChannel } from "../channelSpotlight";
 import { T } from "../i18n";
 import { joinVoiceChannel } from "../join";
+import { GIVE_UP_COOLDOWN_MS, MAX_RETURNS_PER_MINUTE } from "../magnet";
 import { canOpenModViewEverywhere, isModeratorIn } from "../modView";
-import { getReturnChannel, sendUserBack } from "../moveHistory";
+import { getReturnableBatch, getReturnChannel, sendBatchBack, sendUserBack } from "../moveHistory";
 import { canShowMagnet, getMoveAccess } from "../movePermissions";
 import { DEFAULT_AVATAR_URL, getAvatarUrl, getUserDisplayName, openProfile } from "../names";
 import { getPresenceInfo } from "../presence";
-import { pullToMyChannel } from "../pull";
+import { canMoveGroupTo, moveGroupTo, pullableUsers, pullTheirChannelToMe, pullToMyChannel } from "../pull";
 import { cancelQueue, isQueuedFor, queueForChannel } from "../queue";
 import { getRecentMarkMs, settings } from "../settings";
-import { getLastLeave, getRecentChange } from "../sightings";
+import { getLastLeave, getRecentChange, lastSeenTogether } from "../sightings";
 import { isSpeaking, watchSpeaking } from "../speaking";
 import { removeUser, toggleNotify, togglePin, type TrackedUser } from "../store";
 import { getStreamFor } from "../streams";
-import { formatRelativeTime } from "../time";
+import { formatMoment } from "../time";
 import { toast, ToastType } from "../toast";
 import { openUserMenu } from "../userMenu";
 import { ActionButton, cl, PlatformIcons, StatusDot } from "./common";
@@ -64,7 +65,9 @@ import {
 } from "./icons";
 import { openModViewServerMenu, showModViewForPerson } from "./ModViewMenu";
 import { openPersonInfo } from "./PersonInfoModal";
+import { type MenuChoice, type MenuPerson, openPopoverMenu } from "./PopoverMenu";
 import { StreamIndicator } from "./StreamPreview";
+import { PeopleRows } from "./VoicePeople";
 import { closeAllWindows } from "./Window";
 
 const TOOLTIP_MAX_MEMBERS = 10;
@@ -104,19 +107,7 @@ function ChannelTooltip({ voice }: { voice: VoiceInfo; }) {
             <div className={cl("vc-tooltip-channel")}>
                 {voice.guildName ? `${voice.guildName} › ` : ""}{voice.channelName}
             </div>
-            {memberIds.slice(0, TOOLTIP_MAX_MEMBERS).map(id => (
-                <div key={id} className={cl("vc-tooltip-row")}>
-                    <img
-                        className={cl("tip-avatar")}
-                        src={getAvatarUrl(id) ?? DEFAULT_AVATAR_URL}
-                        alt=""
-                    />
-                    {getUserDisplayName(id)}
-                </div>
-            ))}
-            {memberIds.length > TOOLTIP_MAX_MEMBERS && (
-                <div className={cl("dim")}>{T.tooltipAndMore(memberIds.length - TOOLTIP_MAX_MEMBERS)}</div>
-            )}
+            <PeopleRows ids={memberIds} max={TOOLTIP_MAX_MEMBERS} />
             {(voice.isDeafened || voice.isMuted) && (
                 <div className={cl("dim")}>
                     {voice.isDeafened ? T.tooltipDeafened : T.tooltipMuted}
@@ -175,7 +166,7 @@ function NotInVoice({ user }: { user: TrackedUser; }) {
     return (
         <span className={cl("dim")} title={leave ? new Date(leave.at).toLocaleString() : undefined}>
             {leave
-                ? T.leftAgo(formatRelativeTime(leave.at), channel)
+                ? T.leftAt(formatMoment(leave.at), channel)
                 : <>{T.notInVoice}{user.lastChannelName && T.lastChannel(user.lastChannelName)}</>}
         </span>
     );
@@ -211,7 +202,7 @@ interface UserRowProps {
 
 /** What every row shows that does not belong to one person, worked out once per redraw. */
 export function rowSharedKey(): string {
-    return [getMyChannelId(), getMyGuildId(), settings.store.silentJoin, canOpenModViewEverywhere(), T.infoButton, Math.floor(Date.now() / 60_000)].join("|");
+    return [getMyChannelId(), getMyGuildId(), settings.store.silentJoin, settings.store.autoJoinCooldown, getReturnableBatch().length, canOpenModViewEverywhere(), T.infoButton, Math.floor(Date.now() / 60_000)].join("|");
 }
 
 /** Shown only where it can work, so most people without the rights never see a dead button. */
@@ -220,9 +211,107 @@ function showsModView(voice: VoiceInfo | null): boolean {
 }
 
 /** The shield opens the server they sit on, the arrow beside it lists the other shared servers. */
-function ModViewSplit({ userId, voice }: { userId: string; voice: VoiceInfo | null; }) {
+/** Pulls the person, and the arrow offers their whole channel or taking yours over to them. */
+function menuPerson(id: string): MenuPerson {
+    return { id, name: getUserDisplayName(id), avatar: getAvatarUrl(id) ?? DEFAULT_AVATAR_URL };
+}
+
+function menuPeople(ids: readonly string[], firstId?: string): MenuPerson[] {
+    const ordered = firstId && ids.includes(firstId) ? [firstId, ...ids.filter(id => id !== firstId)] : ids;
+    return ordered.map(menuPerson);
+}
+
+function PullSplit({ userId, voice, note }: { userId: string; voice: VoiceInfo | null; note: string; }) {
+    const canAct = voice != null && !voice.isMyChannel;
+    const there = voice?.participantIds.length ?? 0;
+    const groupMove = voice != null && canMoveGroupTo(voice.channelId);
+    const hasMore = canAct;
+
+    const pullButton = (
+        <ActionButton
+            icon={<PullIcon />}
+            tooltip={(voice?.isMyChannel ? T.pullAlreadyHere : T.pullToMyChannel) + note}
+            extraClass={hasMore ? cl("split-main") : undefined}
+            onClick={() => void pullToMyChannel(userId)}
+            disabled={!canAct}
+        />
+    );
+
+    if (!hasMore || !voice) return pullButton;
+
+    const choices = (): MenuChoice[] => {
+        const myChannelId = getMyChannelId();
+        const me = UserStore.getCurrentUser()?.id;
+        const company = myChannelId ? getChannelParticipantIds(myChannelId).filter(id => id !== me) : [];
+        const moving = pullableUsers(voice.participantIds);
+
+        return [
+            {
+                label: T.menuPullChannel(voice.channelName),
+                hint: moving.length === there ? T.peopleThere(there)
+                    : moving.length ? T.pullSomeOfThem(moving.length, there)
+                        : T.pullNobodyMovable,
+                people: menuPeople(moving, userId),
+                onSelect: () => void pullTheirChannelToMe(userId)
+            },
+            ...(groupMove ? [{
+                label: T.menuMoveGroupTo(voice.channelName),
+                hint: T.groupMoveHint(company.length),
+                people: [...(me ? [{ ...menuPerson(me), name: T.menuYou }] : []), ...menuPeople(company)],
+                onSelect: () => moveGroupTo(voice.channelId)
+            }] : [])
+        ];
+    };
+
     return (
         <div className={cl("split")}>
+            {pullButton}
+            <ActionButton
+                icon={<ChevronDownIcon />}
+                tooltip={T.pullMoreHint}
+                extraClass={cl("split-more")}
+                onClick={event => openPopoverMenu(event.currentTarget as Element, choices())}
+            />
+        </div>
+    );
+}
+
+/** Sends the person back, and the arrow sends back everybody the radar moved. */
+function ReturnSplit({ userId, channelName, note }: { userId: string; channelName: string; note: string; }) {
+    const batch = getReturnableBatch().length;
+
+    const returnButton = (
+        <ActionButton
+            icon={<ReturnIcon />}
+            tooltip={T.sendBackTo(channelName) + note}
+            warn
+            extraClass={batch >= 2 ? cl("split-main") : undefined}
+            onClick={() => void sendUserBack(userId)}
+        />
+    );
+
+    if (batch < 2) return returnButton;
+
+    return (
+        <div className={cl("split")}>
+            {returnButton}
+            <ActionButton
+                icon={<ChevronDownIcon />}
+                tooltip={T.returnMoreHint}
+                extraClass={cl("split-more")}
+                onClick={event => openPopoverMenu(event.currentTarget as Element, [{
+                    label: T.returnAllLabel,
+                    hint: T.peopleCount(batch),
+                    onSelect: () => void sendBatchBack()
+                }])}
+            />
+        </div>
+    );
+}
+
+function ModViewSplit({ userId, voice }: { userId: string; voice: VoiceInfo | null; }) {
+    return (
+        <div className={cl("split") + " " + cl("modview-split")}>
             <ActionButton
                 icon={<ShieldIcon />}
                 tooltip={voice?.guildName ? T.modViewGuildHint(voice.guildName) : T.modViewRowHint}
@@ -340,7 +429,8 @@ export function UserRow({ user, drag }: UserRowProps) {
             : voice.isMyChannel ? T.joinAlreadyThere
                 : !voice.canJoin ? T.joinNoPermission
                     : voice.isFull ? T.joinChannelFull
-                        : settings.store.silentJoin ? T.joinMuted : T.join;
+                        : voice.fullButAllowed ? T.joinFullWithRights
+                            : settings.store.silentJoin ? T.joinMuted : T.join;
 
     const handleJoin = () => {
         if (queued) {
@@ -393,7 +483,7 @@ export function UserRow({ user, drag }: UserRowProps) {
                     <span className={cl("name")} onClick={openThisProfile}>{name}</span>
                     {recent && (
                         <span className={cl("badge") + " " + cl("badge-recent-" + recent.kind)}>
-                            {(recent.kind === "joined" ? T.badgeRecentJoined : T.badgeRecentLeft)(formatRelativeTime(recent.at))}
+                            {(recent.kind === "joined" ? T.badgeRecentJoined : T.badgeRecentLeft)(formatMoment(recent.at))}
                         </span>
                     )}
                     {user.autoJoin && <span className={cl("badge") + " " + cl("badge-auto")}>{T.badgeAuto}</span>}
@@ -408,8 +498,8 @@ export function UserRow({ user, drag }: UserRowProps) {
                 <div className={cl("meta-line")}>
                     <span className={cl("dim")}>
                         {user.sharedVoice
-                            ? T.seenAgo(formatRelativeTime(user.lastSeen))
-                            : T.addedAgo(formatRelativeTime(user.lastSeen))}
+                            ? T.seenAt(formatMoment(lastSeenTogether(user.id, user.lastSeen)))
+                            : T.addedAt(formatMoment(user.lastSeen))}
                     </span>
                     <button
                         className={cl("info-button")}
@@ -436,27 +526,19 @@ export function UserRow({ user, drag }: UserRowProps) {
                         icon={queued ? <ClockIcon /> : joinBlocked ? <LockIcon /> : canQueue ? <ClockIcon /> : <JoinIcon />}
                         tooltip={joinTooltip}
                         active={queued}
+                        extraClass={voice?.fullButAllowed && !voice.isMyChannel ? cl("action-pass") : undefined}
                         onClick={handleJoin}
                         disabled={!queued && (!voice || voice.isMyChannel || joinBlocked)}
                     />
                     {canMove && (returnTo
-                        ? <ActionButton
-                            icon={<ReturnIcon />}
-                            tooltip={T.sendBackTo(returnTo.name) + uncheckedNote}
-                            warn
-                            onClick={() => void sendUserBack(user.id)}
-                        />
-                        : <ActionButton
-                            icon={<PullIcon />}
-                            tooltip={(voice?.isMyChannel ? T.pullAlreadyHere : T.pullToMyChannel) + uncheckedNote}
-                            onClick={() => void pullToMyChannel(user.id)}
-                            disabled={!voice || voice.isMyChannel}
-                        />
+                        ? <ReturnSplit userId={user.id} channelName={returnTo.name} note={uncheckedNote} />
+                        : <PullSplit userId={user.id} voice={voice} note={uncheckedNote} />
                     )}
                     {showMagnet && (
                         <ActionButton
                             icon={<MagnetIcon />}
                             tooltip={magnetTooltip + uncheckedNote}
+                            note={T.magnetLimit(MAX_RETURNS_PER_MINUTE, GIVE_UP_COOLDOWN_MS / 1000)}
                             active={user.autoPull}
                             onClick={handleMagnet}
                         />
@@ -479,6 +561,7 @@ export function UserRow({ user, drag }: UserRowProps) {
                     <ActionButton
                         icon={<TargetIcon />}
                         tooltip={user.autoJoin ? T.autoJoinOn : T.autoJoinOff}
+                        note={describeAutoJoinPace()}
                         active={user.autoJoin}
                         onClick={handleAutoJoin}
                     />

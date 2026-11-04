@@ -16,17 +16,15 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-import { plugins } from "@api/PluginManager";
-import { openPluginModal } from "@components/settings";
 import { useForceUpdater } from "@utils/react";
-import { useEffect, useState } from "@webpack/common";
+import { useEffect, useRef, useState } from "@webpack/common";
 
 import { toggleAutoJoinFor } from "../actions";
 import { channelLabel, getVoiceInfo } from "../channels";
 import { confirmFirst } from "../confirm";
 import { syncGlobalHotkey } from "../globalHotkey";
 import { formatHotkey, hotkeyFromEvent, parseHotkey, setHotkeyCaptureActive } from "../hotkey";
-import { PLUGIN_NAME, T } from "../i18n";
+import { T } from "../i18n";
 import { getReturnableBatch, sendBatchBack } from "../moveHistory";
 import { DEFAULT_AVATAR_URL, getAvatarUrl, getUserDisplayName } from "../names";
 import { cancelQueue, getQueueEntry } from "../queue";
@@ -37,13 +35,18 @@ import { cl } from "./common";
 import { Hint } from "./Hint";
 import { ClockIcon, CloseIcon, GearIcon, GlobeIcon, KeyboardIcon, MicIcon, MicOffIcon, ReturnIcon, SearchIcon, TargetIcon, TrashIcon } from "./icons";
 import { TYPE_TARGET_ATTRIBUTE } from "./Overlay";
+import { openPluginSettings } from "./pluginSettings";
 
 function HotkeyRecorder() {
     const [recording, setRecording] = useState(false);
     const forceUpdate = useForceUpdater();
+    const buttonRef = useRef<HTMLButtonElement>(null);
 
     useEffect(() => {
         if (!recording) return;
+
+        // The keys arrive in the window the button sits in, which may be the popped out radar.
+        const view = buttonRef.current?.ownerDocument.defaultView ?? window;
 
         setHotkeyCaptureActive(true);
 
@@ -66,10 +69,10 @@ function HotkeyRecorder() {
             toast(T.hotkeySaved(combo), ToastType.SUCCESS);
         };
 
-        window.addEventListener("keydown", onKeyDown, { capture: true });
+        view.addEventListener("keydown", onKeyDown, { capture: true });
         return () => {
             setHotkeyCaptureActive(false);
-            window.removeEventListener("keydown", onKeyDown, { capture: true });
+            view.removeEventListener("keydown", onKeyDown, { capture: true });
         };
     }, [recording]);
 
@@ -80,6 +83,7 @@ function HotkeyRecorder() {
             {hintProps => (
                 <button
                     {...hintProps}
+                    ref={buttonRef}
                     className={cl("chip") + (recording ? " " + cl("chip-on") : "")}
                     onClick={() => setRecording(value => !value)}
                 >
@@ -293,19 +297,8 @@ export function Tabs({ tab, setTab, pinned, recent }: {
 }
 
 function SettingsButton() {
-    const openSettings = () => {
-        const plugin = plugins[PLUGIN_NAME];
-        try {
-            if (!plugin) throw new Error(`no plugin named ${PLUGIN_NAME}`);
-            openPluginModal(plugin);
-        } catch (error) {
-            console.warn("[VoiceRadar-Discord] could not open the plugin settings:", error);
-            toast(T.settingsUnavailable, ToastType.FAILURE);
-        }
-    };
-
     return (
-        <button className={cl("chip")} onClick={openSettings}>
+        <button className={cl("chip")} onClick={() => openPluginSettings()}>
             <GearIcon />
             {T.settingsButton}
         </button>

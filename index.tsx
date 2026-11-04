@@ -31,8 +31,10 @@ import { closeJoinCards, showJoinCard } from "./components/JoinCard";
 import { closeJoinedModal, openJoinedModal } from "./components/JoinedModal";
 import { panelButtonProblems, VoiceRadarPanelButton } from "./components/PanelButton";
 import { closePersonInfo } from "./components/PersonInfoModal";
-import { closeRadarModal, openRadarModal, windowProblems } from "./components/RadarModal";
-import { channelContextPatch, userContextPatch } from "./contextMenus";
+import { closeRadarModal, openRadarModal, toggleRadarFromHotkey, windowProblems } from "./components/RadarModal";
+import { closeRadarPopout, confirmInPopout, stopWatchingMainWindow, toastInPopout, watchMainWindowOpens } from "./components/RadarPopout";
+import { setOwnWindowConfirm } from "./confirm";
+import { channelContextPatch, profileMenuPatch, userContextPatch } from "./contextMenus";
 import { forgetCustomSound, loadCustomSound } from "./customSound";
 import { keepTimersAwake, releaseGlobalHotkey, revealDiscord, syncGlobalHotkey } from "./globalHotkey";
 import { startGuildSubscriptions, stopGuildSubscriptions, subscriptionProblems } from "./guildSubscriptions";
@@ -51,12 +53,13 @@ import { nameProblems, resetUserLookups } from "./names";
 import { presenceProblems, resetPresenceRequests } from "./presence";
 import { profileProblems } from "./profileFacts";
 import { resetQueue } from "./queue";
-import { migrateJoinAlert, settings } from "./settings";
+import { migrateAutoJoinCooldown, migrateJoinAlert, settings } from "./settings";
 import { loadSightings, shutdownSightings } from "./sightings";
 import { forgetSoundState } from "./sound";
 import { speakingProblems } from "./speaking";
 import { loadStore, shutdownStore } from "./store";
 import { resetStreamCache, streamProblems } from "./streams";
+import { setOwnWindowToast } from "./toast";
 import { setJoinedListOpener, startTracking, stopTracking, trackerProblems } from "./tracker";
 import { forgetVoiceSearch } from "./voiceSearch";
 import { loadWatchLog, shutdownWatchLog } from "./watchLog";
@@ -201,6 +204,7 @@ export default definePlugin({
     contextMenus: {
         "user-context": userContextPatch,
         "user-profile-actions": userContextPatch,
+        "user-profile-overflow-menu": profileMenuPatch,
         "channel-context": channelContextPatch
     },
 
@@ -209,12 +213,16 @@ export default definePlugin({
 
         // The hotkey goes first, so the window stays reachable if anything below fails.
         registerHotkey(openRadarModal);
-        syncGlobalHotkey(openRadarModal);
+        syncGlobalHotkey(toggleRadarFromHotkey);
         // Next, so the health page has answers even if a later step throws.
         runStartupCheck();
         migrateLookupUrl();
         migrateJoinAlert();
+        migrateAutoJoinCooldown();
         setJoinCardShower(showJoinCard);
+        setOwnWindowConfirm(confirmInPopout);
+        setOwnWindowToast(toastInPopout);
+        watchMainWindowOpens(revealDiscord);
         addGlobalContextMenuPatch(watchMenus);
         void loadCustomSound();
 
@@ -262,6 +270,9 @@ export default definePlugin({
         keepTimersAwake(false);
         setJoinedListOpener(null);
         setJoinCardShower(null);
+        setOwnWindowConfirm(null);
+        setOwnWindowToast(null);
+        stopWatchingMainWindow();
         removeGlobalContextMenuPatch(watchMenus);
         forgetMenuWatch();
         closeJoinCards();
@@ -288,7 +299,7 @@ export default definePlugin({
 
         cancelPendingVoiceActions();
 
-        for (const close of [closeRadarModal, closeJoinedModal, closePersonInfo]) {
+        for (const close of [closeRadarModal, closeRadarPopout, closeJoinedModal, closePersonInfo]) {
             try {
                 close();
             } catch (error) {

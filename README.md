@@ -10,8 +10,9 @@ Vencord plugin. Remembers everyone you shared a voice channel with and shows whe
 - **Two tabs.** Pinned and Recent, each with its own count plus a green one for who is in voice right
   now. Pinned rows drag into any order.
 - **Per row.** Channel, server, headcount, status, activity chip, mic, headphones, camera, when you
-  last sat together, when they left voice, and one icon per device the person is online from. A right
-  click opens Discord's own menu for that person.
+  last sat together, when they left voice, and one icon per device the person is online from. Times
+  are exact, such as "left at 19:35", never rounded to "6 min ago". A right click opens Discord's own
+  menu for that person.
 - **Join.** A button on every row and in the right-click menu. Padlock on channels you cannot enter,
   a queue on full ones, and hidden channels still name their members on hover.
 - **Mute mic on auto-join** (off by default). Joins the plugin makes start with your mic off.
@@ -22,12 +23,25 @@ Vencord plugin. Remembers everyone you shared a voice channel with and shows whe
   disconnecting you or moving you out is undone instead, up to six times a minute.
 - **Queue.** Holds your place in a full channel until you get in or cancel.
 - **Info.** A button under each name, and an entry in the right-click menu, opens what is known
-  about the person. Every join, move and leave with the time, your own joins and leaves next to
-  theirs with how long you sat together, how often they showed up this week, when the account was made and the servers you share. A button in
+  about the person. The log is grouped into stays, one block per channel they sat in, and what
+  happened during a stay sits inside its block: their stream and camera going on and off, and your
+  own joins and leaves with how long you sat together. When Discord comes up, whoever already sits
+  in voice gets a line, and so does whoever left while it was closed. Every time shown is exact.
+  Where only a range is known, such as a leave while Discord was closed or an event Discord sent
+  late after a dropped connection, the line shows a question mark and the two moments it surely
+  fell between. Time together is only counted over stretches the plugin watched without a break,
+  and a dashed rail marks where it was not watching. The newest stay is on top and arrows show the
+  order: a line runs from the row that brought the person in up to the channel's name, another from
+  the name to the row that took them out, and an arrow leads from block to block when they moved. A
+  dashed one says how long they were not seen in voice, when the plugin watched all of that time.
+  Hovering a line shows who sat in that channel at that moment and who sits there now,
+  and the card on top shows everybody in their current channel. A left click on any of those people
+  opens their profile, a right click Discord's menu for them. The tiles say when you were last seen together, the joins and moves of the last seven
+  days the plugin saw, and the account's age in whole years and months. A button in
   its header opens the person on a lookup site, discord-sensor.com unless you set another, in a
   window of its own inside Discord. You sign in to the site there once and it remembers you. The
   plugin reads nothing from the site, it only shows the page when you click.
-  <sub>The log keeps the last 80 entries per person, only on your computer.</sub>
+  <sub>The log keeps the last 200 entries per person, only on your computer, opens on its newest three days and says how full it is.</sub>
 - **Mod View.** A double button on the row, in the info window and in the right-click menu opens
   Discord's own Mod View panel for the person. The shield half picks the server they sit on, the
   arrow half lists your other shared servers. Discord keeps that panel for moderators, so the plugin
@@ -46,14 +60,22 @@ Vencord plugin. Remembers everyone you shared a voice channel with and shows whe
 - **Windows.** The radar, the history, the join list and the health page are drawn on their own
   rather than as Discord modals, which is what lets them open without a stall. A row's buttons sit in
   two strips, voice first and the list second, and whatever Discord opens from a window still comes
-  up on top of it.
+  up on top of it. Drag a window by its title to move it and by any edge or corner to resize it, and
+  it opens there next time. A double click on the title puts it back in the middle. A button in the
+  radar's title pops it out into a window of its own, the same kind Discord uses for its popouts, which
+  goes anywhere, another monitor included, can stay above other windows, and leaves Discord free to use.
+  Right-click menus, the plugin's windows, questions and messages open in that window too, while
+  anything of Discord's own a click there opens, such as a profile, a chat, Mod View or the settings,
+  comes up in Discord and brings it forward.
 - **Startup.** Servers are asked for voice states ten at a time, so the radar is ready a few seconds
   after Discord logs in.
 - **Moderator mode** (on by default, shows nothing where you lack the rights). Pull one person or a whole channel to you (99 per click,
   confirmation past eight, four moves at a time by default), undo a pull, magnet one person back each
-  time they leave. Pulling needs Move Members in both channels of the same server. The magnet shows
-  wherever you may move the person and waits while you sit somewhere it cannot pull them to.
-- **UI.** Account panel button with a counter, submenu in user menus and profiles, entry in voice and
+  time they leave, or move your whole channel to another one, everybody first and you last, from the
+  menu of that channel or of somebody sitting in it. Moves need Move Members in both channels of the
+  same server. The magnet shows wherever you may move the person and waits while you sit somewhere it
+  cannot pull them to.
+- **UI.** Account panel button with a counter, submenu in user menus and in the three dots of a profile, entry in voice and
   stage channel menus.
 - **Languages.** English and Russian, following Discord by default.
 
@@ -83,7 +105,7 @@ Eighteen, in panel order. Vencord prints a longer description beside each.
 | Hotkey | text | `Alt+2` | Opens and closes the window |
 | Mute mic on auto-join | switch | off | Mutes your mic on every join the plugin makes |
 | Only follow when idle | switch | off | Never pulls you out of a call |
-| Auto-join cooldown | seconds | 5 | Gap between two auto-joins, clamped to 2s and 5min |
+| Auto-join cooldown | seconds | 0 | Gap between two auto-joins, 0 to 5min, 0 follows at once |
 | Join alert | dropdown | With the plugin chime | A card in Discord plus a Windows notification while Discord is in the background, with the plugin chime or your own sound, or off |
 | Your own sound | file | none | Shown for the own-sound choice. mp3, ogg, wav or m4a up to 2 MB, cut at 5 seconds |
 | Join sound volume | slider, 0 to 100 | 60 | How loud that sound is |

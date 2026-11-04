@@ -430,6 +430,23 @@
     color: #fff;
 }
 
+/* The channel is full, but Move Members lets you in anyway, so the join button gets a small amber mark. */
+.vr-action.vr-action-pass {
+    position: relative;
+}
+
+.vr-action.vr-action-pass::after {
+    content: "";
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--vr-amber);
+    box-shadow: 0 0 0 2px var(--vr-row-bg, var(--vr-raised));
+}
+
 .vr-action.vr-action-warn,
 .vr-action.vr-action-warn:hover {
     background: var(--vr-amber);

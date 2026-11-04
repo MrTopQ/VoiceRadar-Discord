@@ -135,6 +135,12 @@ export function getSubscriptionStatus() {
     return lastRun;
 }
 
+/** Whether Discord keeps sending this server's voice changes, so somebody missing from it has really left. */
+export function isWatchingVoiceOf(guildId: string): boolean {
+    if (!lastRun) return false;
+    return canTellSubscribed() ? alreadyWatching(guildId) : watched.has(guildId);
+}
+
 export function isSubscriptionGuarded(): boolean {
     return canTellSubscribed();
 }

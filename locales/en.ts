@@ -38,7 +38,7 @@ export const en = {
     settingHotkeyInvalid: "That needs a key of its own, not only modifiers. For example Alt+2 or Ctrl+Shift+V",
     settingSilentJoin: "Mute your mic on auto-join. Covers every join the plugin makes for you, whether that is a quick jump, an auto-join, or a slot you queued for",
     settingAutoJoinOnlyWhenIdle: "Only follow the auto-join target when you are not in a voice channel yourself (never yanks you out of a call you are already in)",
-    settingAutoJoinCooldown: "Cooldown between auto-joins, in seconds. 0 is as fast as it gets",
+    settingAutoJoinCooldown: "Cooldown between auto-joins, in seconds, from 0 to 300. 0 joins at once",
     settingJoinAlert: "When somebody with a bell joins a voice channel. While you are in Discord a card shows in the corner, and while Discord is in the background a Windows notification comes too. The sound is heard over a fullscreen game",
     joinAlertChime: "Notification with the plugin chime",
     joinAlertCustom: "Notification with your own sound",
@@ -108,8 +108,43 @@ export const en = {
     /* ── the window behind the status chip ───────────────────────────────────────────────── */
     healthTitle: "What is working",
 
-    healthGroupFeatures: "Every feature, and whether Discord still has what it needs",
-    healthGroupAround: "Around the plugin",
+    healthRecheck: "Check again",
+    healthChecked: (when: string) => `Checked ${when}`,
+    healthSummaryGood: "Everything works",
+    healthSummaryStarting: "Almost there, the plugin is still starting",
+    healthSummaryIssues: (count: number) => `${count} ${pluralEn(count, "item needs", "items need")} a look`,
+    healthSummaryCounts: (counts: Record<"good" | "off" | "pending" | "waiting" | "bad", number>) => [
+        counts.good && `${counts.good} working`,
+        counts.off && `${counts.off} off in the settings`,
+        counts.pending && `${counts.pending} waiting`,
+        counts.waiting && `${counts.waiting} partly working`,
+        counts.bad && `${counts.bad} broken`
+    ].filter(Boolean).join(", "),
+    healthAttention: "Needs a look",
+    healthGroups: {
+        voice: "Voice",
+        people: "People",
+        join: "Joining channels",
+        windows: "Windows and menus",
+        moderation: "Moderation",
+        alerts: "Notifications",
+        system: "Discord and the system"
+    } as Record<string, string>,
+    healthGroupCount: (working: number, total: number) => `${working} of ${total}`,
+    healthPill: {
+        good: "working",
+        off: "off",
+        pending: "waiting",
+        waiting: "partly",
+        bad: "broken"
+    } as Record<string, string>,
+    healthOpenSetting: "Open the setting",
+    healthFixUpdate: "Most likely Discord updated and moved what this relies on. Update the plugin and restart Discord, and if that does not help, tell the author.",
+    healthFixServersCapped: "Raise the limit of servers the plugin watches in the settings.",
+    healthFixNotifyDenied: "Open Windows Settings, Notifications, and turn them on for Discord, then press Check again. "
+        + "Or keep the alert inside Discord only.",
+    healthFixVoiceQuiet: "If nobody joined or left in that time, all is well. If people are moving and no events come in, restart Discord.",
+    healthFixListLost: "Restart Discord and the saved list is read again. It has not been touched.",
 
     healthFeatureBroken: (parts: string) => `Does not work, a Discord update moved this. ${parts}`,
     healthFeatureWeak: (parts: string) => `Weaker than it should be, a Discord update moved this. ${parts}`,
@@ -179,7 +214,7 @@ export const en = {
     healthHotkeyTitle: "Hotkey",
     healthNotifyTitle: "Notifications",
     healthNotifyReady: "Windows lets Discord show them, so a join reaches you outside the app.",
-    healthNotifyDenied: "Notifications are blocked, so nothing reaches you outside Discord. Allow them for Discord in the system settings.",
+    healthNotifyDenied: "Notifications are blocked, so nothing reaches you outside Discord.",
     healthNotifyAsk: "Permission has not been asked for yet. The first notification will ask.",
     healthNotifyToastOnly: "Shown inside Discord only, so the operating system has no say in it.",
     healthNotifyStyle: (label: string) => `Shown as ${label}.`,
@@ -202,9 +237,7 @@ export const en = {
         `Somebody is in voice on ${guilds} ${pluralEn(guilds, "server", "servers")} right now, ${states} people in total. `
         + "Nothing has come in yet.",
     healthVoiceNone: "Discord has not handed over a single voice state yet.",
-    healthBuildTitle: "Discord build",
     healthBuildLine: (channel: string, build: string) => `Channel ${channel}, build ${build}.`,
-    healthBuildUnknown: "Discord is not saying which build it is. Nothing here depends on it.",
 
     /* ── radar window ────────────────────────────────────────────────────────────────────── */
     searchPlaceholder: "Search people…",
@@ -222,6 +255,7 @@ export const en = {
     foundNone: "Nobody else with that name is in a voice channel",
     foundMore: (count: number) => `${count} more ${pluralEn(count, "person", "people")}, narrow the name down`,
     badgeTracked: "IN RADAR",
+    foundPull: "Pull into your channel and add to the radar",
     closeWindow: "Close",
     windowCrashed: "The Voice Radar window ran into an error and closed. The details are in the console (Ctrl+Shift+I)",
     filterLabel: "Who to show",
@@ -234,22 +268,46 @@ export const en = {
     infoButton: "info",
     infoWindowLabel: "Info",
     infoButtonHint: "Everything about them, where they go and when",
-    infoWithYou: "Last time with you",
+    infoWithYou: "Last seen together",
+    infoWithYouNow: "right now, you are together",
     infoWithYouNever: "never shared a channel with you",
-    infoWeek: "This week",
+    infoWeek: "Last 7 days",
+    infoWeekValue: (joins: number, moves: number) =>
+        `${joins} ${pluralEn(joins, "join", "joins")} · ${moves} ${pluralEn(moves, "move", "moves")}`,
     infoStatus: "Status",
     infoStatusUnknown: "Discord has not said",
-    infoLogTitle: (count: number) => `Log, ${count} ${pluralEn(count, "line", "lines")}`,
+    infoLogTitle: (count: number, limit: number) => `Log, ${count} of ${limit} ${pluralEn(limit, "line", "lines")}`,
+    infoLogOrder: "newest on top, the arrows show the order",
+    infoPause: (minutes: number) => `not seen in voice for ${duration(minutes)}`,
     infoLogEmpty: "Nothing yet. Every join, move and leave from now on lands here.",
     infoKindJoined: "Joined",
-    infoKindMoved: "Moved to",
+    infoKindMovedFrom: (place: string) => `Came here from ${place}`,
+    infoKindMovedTo: (place: string) => `Went from here to ${place}`,
     infoKindLeft: "Left",
-    infoKindYouJoined: "You joined",
-    infoKindYouLeft: "You left",
+    youTag: "You",
+    infoKindYouJoined: "joined",
+    infoKindYouLeft: "left",
     infoCameToYou: "to you",
     infoTogether: together,
-    infoGap: (from: string, to: string) => `no data ${from} – ${to}, Discord was closed or offline`,
-    infoTogetherBefore: (minutes: number) => `before that ${together(minutes)}`,
+    infoTogetherSince: (time: string, minutes: number) => `together since ${time} · ${duration(minutes)}`,
+    infoKindSeen: "Already there",
+    infoKindSeenAgain: "Still there",
+    infoKindStreamOn: "Stream",
+    infoKindStreamOff: "Stream ended",
+    infoKindVideoOn: "Camera on",
+    infoKindVideoOff: "Camera off",
+    infoSeenWithYou: "with you",
+    infoAfterConnect: "after Discord connected",
+    infoBetween: (from: string, to: string) => `between ${from} and ${to}`,
+    infoGoneTitle: (noticed: string) => `The exact moment is unknown. The plugin noticed they were gone at ${noticed}`,
+    infoLateTitle: "Discord sent this after the connection dropped, so the exact moment is unknown",
+    infoLasted: duration,
+    infoShowMore: (count: number) => `Show more, ${count} ${pluralEn(count, "line", "lines")} hidden`,
+    journalThen: "Who was there",
+    journalStayed: "Who stayed there",
+    journalStayedNobody: "Nobody stayed",
+    journalNow: "There now",
+    journalNowEmpty: "Nobody there now",
     infoCreated: "Account made",
     infoBot: "BOT",
     infoFriend: "Friend",
@@ -264,16 +322,21 @@ export const en = {
     infoIdCopyFailed: "Could not copy the ID",
     infoYes: "yes",
     infoNo: "no",
-    infoAgeYears: (count: number) => `${count} ${pluralEn(count, "year", "years")} ago`,
-    infoAgeMonths: (count: number) => `${count} ${pluralEn(count, "month", "months")} ago`,
-    infoAgeDays: (count: number) => count ? `${count} ${pluralEn(count, "day", "days")} ago` : "today",
+    infoAge: (years: number, months: number, days: number) => {
+        const unit = (count: number, one: string, many: string) => (count ? `${count} ${pluralEn(count, one, many)}` : "");
+        const parts = years ? [unit(years, "year", "years"), unit(months, "month", "months")]
+            : months ? [unit(months, "month", "months"), unit(days, "day", "days")]
+                : [days ? unit(days, "day", "days") : "under a day"];
+        return parts.filter(Boolean).join(" ");
+    },
     infoLiveTitle: "Now in voice",
-    infoLiveSince: (since: string) => `joined ${since}`,
+    infoLiveSince: (when: string) => `joined ${when}`,
+    infoLiveFound: (when: string) => `here since ${when} or earlier`,
     infoLivePeople: (count: number) => `${count} ${pluralEn(count, "person", "people")} in there`,
     infoOfflineTitle: "Not in voice right now",
     infoOfflineLast: (channel: string) => `last seen in ${channel}`,
     infoAtLeast: (count: number) => `at least ${count}`,
-    infoWeekSub: "joins and moves",
+    infoWeekSub: "while Discord was running",
     infoToday: "Today",
     infoYesterday: "Yesterday",
     infoLogEmptyTitle: "No moves yet",
@@ -323,10 +386,10 @@ export const en = {
 
     notInVoice: "Not in voice",
     lastChannel: (channel: string) => `, last seen in ${channel}`,
-    leftAgo: (when: string, channel: string | null) =>
+    leftAt: (when: string, channel: string | null) =>
         channel ? `Not in voice, left ${channel} ${when}` : `Not in voice, left ${when}`,
-    seenAgo: (when: string) => `seen ${when}`,
-    addedAgo: (when: string) => `added ${when}`,
+    seenAt: (when: string) => `seen together ${when}`,
+    addedAt: (when: string) => `added ${when}`,
 
     tooltipInVoiceChat: "In Voice Chat",
     tooltipAndMore: (count: number) => `+${count} more`,
@@ -344,6 +407,16 @@ export const en = {
     magnetIdleNotConnected: "Magnet on, idle, because you are not in a voice channel",
     magnetIdleOtherGuild: "Magnet on, idle, because they are in another server and Discord cannot move them here",
     magnetIdleTargetOffline: "Magnet on, waiting, because they are not in a voice channel yet",
+    magnetLimit: (returns: number, seconds: number) =>
+        `At most ${returns} returns a minute. If they leave more often, the magnet switches itself off `
+        + `and can be switched on again after ${seconds} ${pluralEn(seconds, "second", "seconds")}. These numbers are fixed`,
+    autoJoinPace: (seconds: number) =>
+        `Joins at most once every ${seconds} ${pluralEn(seconds, "second", "seconds")}. You can change this pause in the plugin settings.`,
+    autoJoinNoPause: "Joins at once, with no pause. You can set one in the plugin settings.",
+    autoJoinPaceCeiling: (set: number, used: number) =>
+        `The settings say ${set} ${pluralEn(set, "second", "seconds")}, but the plugin waits at most ${used} ${pluralEn(used, "second", "seconds")}.`,
+    autoJoinReturns: (returns: number) =>
+        `If somebody disconnects or moves you, it comes back up to ${returns} times a minute, and that number is fixed`,
     magnetActive: "Magnet on, they get dragged back whenever they wander off",
 
 
@@ -352,6 +425,7 @@ export const en = {
     joinNoPermission: "No permission to join this channel",
     joinQueued: "Waiting for a free slot, click to cancel",
     joinChannelFull: "Channel is full, click to wait for a free slot",
+    joinFullWithRights: "The channel is full, but you hold Move Members, so you can join past the limit",
     joinMuted: "Jump in (muted)",
     join: "Jump in",
 
@@ -450,11 +524,31 @@ export const en = {
     restartConfirmBody: "You are in a voice channel, and the call drops while Discord restarts.",
     restartConfirmButton: "Restart",
     restartByHand: "Could not restart from here. Quit Discord from the tray and open it again",
+    popOut: "Pop out into its own window. Drag it anywhere, even to another monitor, while Discord keeps working beside it",
+    popIn: "Put the radar back into Discord",
+    popoutMinimize: "Minimize",
+    popoutOnTop: "Keep above all windows",
+    popoutOnTopOn: "Above all windows, click to turn it off",
+    popoutFailed: "Discord did not open a separate window, the radar stays inside Discord",
     lookupFailed: "Could not open the site in your browser",
     menuHistory: "Voice Radar info",
     menuTrackChannel: (count: number) => `Add everyone here to the radar (${count})`,
     menuPullEveryoneHere: "Pull everyone here into my channel",
+    menuMoveGroupHere: "Move here with my whole channel",
+    menuMoveGroupTo: (channel: string) => `Move my whole channel to ${channel}`,
 
+    pullMoreHint: "Pull more",
+    peopleThere: (count: number) => `${count} ${pluralEn(count, "person", "people")} there`,
+    groupMoveHint: (count: number) => (count ? `you and ${count} more from your channel` : "only you, nobody else is in your channel"),
+    pullSomeOfThem: (moving: number, there: number) => `${moving} of the ${there} there can be moved`,
+    pullNobodyMovable: "nobody there can be moved",
+    menuYou: "You",
+    listNames: (names: readonly string[], hidden: number) => hidden
+        ? `${names.join(", ")} and ${hidden} more`
+        : names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}` : names[0] ?? "",
+    returnMoreHint: "Send more back",
+    returnAllLabel: "Send everyone you moved back to their channels",
+    peopleCount: (count: number) => `${count} ${pluralEn(count, "person", "people")}`,
     userAddedToRadar: (name: string) => `${name} added to Voice Radar`,
     userRemovedFromRadar: (name: string) => `${name} removed from Voice Radar`,
     addedToRadar: (count: number) => `Added ${count} ${pluralEn(count, "person", "people")} to the radar`,
@@ -527,6 +621,17 @@ export const en = {
         + `in about ${seconds} ${pluralEn(seconds, "second", "seconds")}. `
         + "Every move is a line in the server's audit log.",
     pullConfirmButton: (count: number) => `Move ${count}`,
+    pullConfirmWho: (names: string) => `Moving ${names}.`,
+    groupMoveConfirmWho: (names: string) => `Coming with you are ${names}.`,
+    groupMoveConfirmTitle: "Move your whole channel?",
+    groupMoveConfirmBody: (count: number, where: string, seconds: number) =>
+        `${count} ${pluralEn(count, "person", "people")} from your channel will be moved to ${where} and you after them, `
+        + `in about ${seconds} ${pluralEn(seconds, "second", "seconds")}. `
+        + "Every move is a line in the server's audit log.",
+    groupMoveConfirmButton: (count: number) => `Move ${count}`,
+    groupMoved: (count: number, where: string) => `You and ${count} ${pluralEn(count, "other", "others")} are now in ${where}`,
+    groupMovedPartly: (count: number, where: string, left: number) =>
+        `${count} moved to ${where}, ${left} stayed behind. Click again for the rest`,
     noMovePermissionHere: (where: string) =>
         `No Move Members in ${where}, nobody can be taken out of there`,
     pulledUsers: (count: number, where: string) =>
@@ -574,6 +679,7 @@ export const en = {
     apiModViewKind: "the Mod View panel number, taken from memory and may not match",
     apiModViewMenu: "the server list for Mod View (ContextMenuApi)",
     apiModViewBypass: "the patch that lifts Discord's rights check on Mod View (the same one ShowHiddenThings uses), without it Discord shuts the panel where you lack the rights",
+    apiPopout: "the radar's own window (PopoutWindowStore and the POPOUT_WINDOW_OPEN event), without it the radar opens only inside Discord",
     apiUserMenu: "Discord's menu for a person on right click (UserGenericContextMenu, GuildChannelUserContextMenu)",
     userMenuUnavailable: "Could not open Discord's menu for this person, a Discord update has moved it. Everything else works",
     apiWindow: "the window itself (createRoot, and Modal as the fallback), so the radar cannot be opened",
@@ -591,6 +697,11 @@ export const en = {
 
     /* ── relative time ───────────────────────────────────────────────────────────────────── */
     timeJustNow: "just now",
+    momentToday: (time: string) => `at ${time}`,
+    momentYesterday: (time: string) => `yesterday at ${time}`,
+    momentOn: (date: string, time: string) => `on ${date} at ${time}`,
+    dayToday: (time: string) => `today ${time}`,
+    dayYesterday: (time: string) => `yesterday ${time}`,
     timeMinutes: (value: number) => `${value}m ago`,
     timeHours: (value: number) => `${value}h ago`,
     timeDays: (value: number) => `${value}d ago`,

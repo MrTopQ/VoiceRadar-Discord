@@ -31,8 +31,8 @@ import { joinVoiceChannel } from "./join";
 import { noteOurMenu } from "./menuWatch";
 import { getReturnableBatch, sendBatchBack } from "./moveHistory";
 import { canMoveUser, canShowMagnet, isModeratorMode } from "./movePermissions";
-import { getStoredName, getUserDisplayName, UNKNOWN_NAME } from "./names";
-import { pullTheirChannelToMe, pullToMyChannel, pullUsersToMe } from "./pull";
+import { closeProfile, getStoredName, getUserDisplayName, UNKNOWN_NAME } from "./names";
+import { canMoveGroupTo, moveGroupTo, pullTheirChannelToMe, pullToMyChannel, pullUsersToMe } from "./pull";
 import { cancelQueue, isQueuedFor, queueForChannel } from "./queue";
 import { settings } from "./settings";
 import { addUser, addUsers, getTrackedUser, removeUser, toggleNotify, togglePin } from "./store";
@@ -76,11 +76,11 @@ function menuParts() {
     };
 }
 
-export const userContextPatch: NavContextMenuPatchCallback = (children, { user, guildId }: UserContextProps) => {
+function userEntries({ user, guildId }: UserContextProps): ReactElement[] | null {
     noteOurMenu("user");
     const { CheckboxItem, Separator } = menuParts();
-    if (!user?.id) return;
-    if (user.id === UserStore.getCurrentUser()?.id) return;
+    if (!user?.id) return null;
+    if (user.id === UserStore.getCurrentUser()?.id) return null;
 
     const tracked = getTrackedUser(user.id);
     const storedName = getStoredName(user.id, user.username ?? UNKNOWN_NAME);
@@ -88,9 +88,10 @@ export const userContextPatch: NavContextMenuPatchCallback = (children, { user, 
     const voice = getVoiceInfo(user.id);
     const canMove = canMoveUser(user.id);
     const returnable = getReturnableBatch().length;
-    const showModeration = (voice != null && canMove) || canShowMagnet(user.id);
+    const canMoveGroup = voice != null && canMoveGroupTo(voice.channelId);
+    const showModeration = (voice != null && canMove) || canShowMagnet(user.id) || canMoveGroup;
 
-    insertNearAnchor(children, (
+    return [(
         <Menu.MenuItem id="voice-radar" key="voice-radar" label={T.menuRoot}>
             <Menu.MenuItem
                 id="voice-radar-track"
@@ -152,7 +153,10 @@ export const userContextPatch: NavContextMenuPatchCallback = (children, { user, 
             <Menu.MenuItem
                 id="voice-radar-open"
                 label={T.menuOpenRadar}
-                action={openRadarModal}
+                action={() => {
+                    closeProfile();
+                    openRadarModal();
+                }}
             />
             {showModeration && (
                 <Menu.MenuItem id="voice-radar-moderation" label={T.menuModerator}>
@@ -170,6 +174,13 @@ export const userContextPatch: NavContextMenuPatchCallback = (children, { user, 
                             label={T.menuPullChannel(voice.channelName)}
                             disabled={voice.isMyChannel}
                             action={() => void pullTheirChannelToMe(user.id)}
+                        />
+                    )}
+                    {voice && canMoveGroup && (
+                        <Menu.MenuItem
+                            id="voice-radar-move-group"
+                            label={T.menuMoveGroupTo(voice.channelName)}
+                            action={() => moveGroupTo(voice.channelId)}
                         />
                     )}
                     {returnable >= 2 && (
@@ -194,9 +205,26 @@ export const userContextPatch: NavContextMenuPatchCallback = (children, { user, 
             id="voice-radar-history"
             key="voice-radar-history"
             label={T.menuHistory}
-            action={() => openPersonInfo(user.id)}
+            action={() => {
+                closeProfile();
+                openPersonInfo(user.id);
+            }}
         />
-    ), ...modViewMenuItems(user.id, guildId));
+    ), ...modViewMenuItems(user.id, guildId)];
+}
+
+export const userContextPatch: NavContextMenuPatchCallback = (children, props: UserContextProps) => {
+    const entries = userEntries(props);
+    if (entries) insertNearAnchor(children, ...entries);
+};
+
+/** The "…" menu of a full profile has none of the anchors, so the entries get a section of their own under its first one. */
+export const profileMenuPatch: NavContextMenuPatchCallback = (children, props: UserContextProps) => {
+    const entries = userEntries(props);
+    if (!entries) return;
+
+    const Group = (Menu as any).MenuGroup;
+    children.splice(1, 0, ...(Group ? [<Group key="voice-radar-group">{entries}</Group>] : entries));
 };
 
 interface ChannelContextProps {
@@ -253,6 +281,13 @@ export const channelContextPatch: NavContextMenuPatchCallback = (children, { cha
                     id="voice-radar-channel-pull"
                     label={T.menuPullEveryoneHere}
                     action={() => void pullUsersToMe(info.participantIds, info.channelName)}
+                />
+            )}
+            {canMoveGroupTo(channel.id) && (
+                <Menu.MenuItem
+                    id="voice-radar-channel-move-group"
+                    label={T.menuMoveGroupHere}
+                    action={() => moveGroupTo(channel.id)}
                 />
             )}
             {returnable >= 2 && (

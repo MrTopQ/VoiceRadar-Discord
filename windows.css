@@ -70,15 +70,83 @@
 .vr-health {
     display: flex;
     flex-direction: column;
-    gap: 14px;
-    padding: 4px 0 8px;
+    gap: 18px;
+    padding: 2px 0 10px;
     min-width: 0;
     max-width: 100%;
     overflow-x: hidden;
 }
 
+.vr-health-summary {
+    --vr-tone: var(--vr-green);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    border: 1px solid color-mix(in srgb, var(--vr-tone) 35%, transparent);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--vr-tone) 11%, transparent);
+}
+
+.vr-health-tone-waiting {
+    --vr-tone: var(--vr-amber);
+}
+
+.vr-health-tone-bad {
+    --vr-tone: var(--vr-red);
+}
+
+.vr-health-tone-pending {
+    --vr-tone: var(--vr-brand);
+}
+
+.vr-health-summary-icon {
+    display: flex;
+    flex: 0 0 auto;
+    color: var(--vr-tone);
+}
+
+.vr-health-summary-title {
+    margin-bottom: 2px;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--vr-text-strong);
+}
+
+.vr-health-summary-meta {
+    flex: 0 0 auto;
+    margin-left: auto;
+    font-size: 12px;
+    line-height: 1.5;
+    text-align: right;
+    color: var(--vr-text-muted);
+}
+
+.vr-health-recheck {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 14px;
+}
+
+.vr-health-checked {
+    font-size: 12px;
+    white-space: nowrap;
+    color: var(--vr-text-muted);
+}
+
+.vr-health-section {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
 .vr-health-group {
-    margin: 4px 0 -4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
     font-size: 12px;
     font-weight: 700;
     letter-spacing: 0.04em;
@@ -86,37 +154,171 @@
     color: var(--vr-text-muted);
 }
 
-.vr-health-group:not(:first-child) {
-    margin-top: 10px;
+.vr-health-group-count {
+    margin-left: auto;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
 }
 
-.vr-health-row {
+.vr-health-attention .vr-health-group {
+    color: var(--vr-amber);
+}
+
+.vr-health-attention {
+    gap: 8px;
+}
+
+.vr-health-card {
     display: flex;
     align-items: flex-start;
-    gap: 10px;
-    font-size: 13.5px;
+    gap: 12px;
     min-width: 0;
-    max-width: 100%;
+    padding: 9px 10px;
+    border-radius: 10px;
+    transition: background-color 0.12s ease;
 }
 
-.vr-health-row .vr-status-dot-small {
-    margin-top: 5px;
+.vr-health-card:hover {
+    background: var(--vr-mod);
+}
+
+.vr-health-attention .vr-health-card {
+    padding: 12px;
+    border: 1px solid var(--vr-border);
+    background: var(--vr-card);
+}
+
+.vr-health-icon {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    background: var(--vr-mod);
+    color: var(--vr-text-muted);
+}
+
+.vr-health-card-pending .vr-health-icon {
+    background: var(--vr-brand-soft);
+    color: var(--vr-brand-text);
+}
+
+.vr-health-card-waiting .vr-health-icon {
+    background: color-mix(in srgb, var(--vr-amber) 16%, transparent);
+    color: var(--vr-amber);
+}
+
+.vr-health-card-bad .vr-health-icon {
+    background: color-mix(in srgb, var(--vr-red) 16%, transparent);
+    color: var(--vr-red-text);
+}
+
+.vr-health-text {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.vr-health-name {
+    margin-bottom: 2px;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--vr-text-strong);
 }
 
 .vr-health-detail {
+    font-size: 12.5px;
+    line-height: 1.45;
     color: var(--vr-text-muted);
     white-space: normal;
     overflow-wrap: anywhere;
 }
 
-.vr-health-row > div {
-    min-width: 0;
+.vr-health-pill {
+    flex: 0 0 auto;
+    align-self: center;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
 }
 
-.vr-health-name {
-    font-weight: 600;
-    color: var(--vr-text-strong);
-    margin-bottom: 2px;
+.vr-health-pill-good {
+    background: color-mix(in srgb, var(--vr-green) 16%, transparent);
+    color: var(--vr-green-text);
+}
+
+.vr-health-pill-off {
+    background: var(--vr-mod);
+    color: var(--vr-text-muted);
+}
+
+.vr-health-pill-pending {
+    background: var(--vr-brand-soft);
+    color: var(--vr-brand-text);
+}
+
+.vr-health-pill-waiting {
+    background: color-mix(in srgb, var(--vr-amber) 16%, transparent);
+    color: var(--vr-amber);
+}
+
+.vr-health-pill-bad {
+    background: color-mix(in srgb, var(--vr-red) 16%, transparent);
+    color: var(--vr-red-text);
+}
+
+.vr-health-fix {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-top: 10px;
+    padding: 9px 11px;
+    border-radius: 8px;
+    background: var(--vr-mod);
+    font-size: 12.5px;
+    line-height: 1.45;
+    color: var(--vr-text);
+}
+
+.vr-health-fix svg {
+    flex: 0 0 auto;
+    margin-top: 1px;
+    color: var(--vr-amber);
+}
+
+.vr-health-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 14px;
+}
+
+.vr-setting-flash {
+    border-radius: 8px;
+    animation: vr-setting-flash 1.8s var(--vr-ease);
+}
+
+@keyframes vr-setting-flash {
+    0%,
+    55% {
+        background: var(--vr-brand-soft);
+        box-shadow: 0 0 0 2px var(--vr-brand);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .vr-health-card {
+        transition: none;
+    }
+
+    .vr-setting-flash {
+        animation: none;
+        box-shadow: 0 0 0 2px var(--vr-brand);
+    }
 }
 
 .vr-info-header-avatar {
@@ -165,6 +367,13 @@
 
 .vr-info-section-title {
     margin-bottom: 8px;
+}
+
+.vr-info-section-note {
+    margin-left: 8px;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
 }
 
 .vr-info-live-channel {
@@ -332,98 +541,352 @@
     color: var(--vr-text-muted);
 }
 
-/* A stretch the plugin did not see, because Discord was closed or offline. */
-.vr-info-gap {
-    margin: 2px 8px;
-    padding: 3px 10px;
-    border-left: 2px dashed var(--vr-border-strong);
-    color: var(--vr-text-muted);
-    font-size: 12px;
-    font-style: italic;
-}
-
-.vr-info-line {
+.vr-info-day {
     display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 5px 8px;
-    border-radius: 6px;
-    font-size: 13px;
+    flex-direction: column;
+    gap: 8px;
 }
 
-.vr-info-line:hover {
-    background: var(--vr-mod);
+/* One stay in a channel, its events on a rail that takes the accent colour while you sat together. */
+.vr-stay {
+    --vr-rail: color-mix(in srgb, var(--vr-text-muted) 55%, transparent);
+
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    padding: 6px 10px 8px;
+    border: 1px solid var(--vr-border);
+    border-radius: 10px;
+    background: var(--vr-raised);
 }
 
-.vr-info-dot {
-    flex: 0 0 8px;
-    height: 8px;
-    border-radius: 50%;
+/* Room for the arrow from the older block below. */
+.vr-stay-linked {
+    margin-bottom: 14px;
 }
 
-.vr-info-dot-joined,
-.vr-info-kind-joined {
-    color: var(--status-positive, #23a55a);
+/* Runs from the channel's icon in the block below up into this block. */
+.vr-stay-link {
+    position: absolute;
+    top: 100%;
+    left: 16px;
+    z-index: 1;
+    height: 34px;
+    border-left: 2px solid var(--text-link, #00a8fc);
 }
 
-.vr-info-dot-joined {
-    background: var(--status-positive, #23a55a);
-}
-
-.vr-info-dot-moved,
-.vr-info-kind-moved {
-    color: var(--text-link, #00a8fc);
-}
-
-.vr-info-dot-moved {
+.vr-stay-link::before {
+    content: "";
+    position: absolute;
+    top: -3px;
+    left: -5px;
+    width: 8px;
+    height: 7px;
     background: var(--text-link, #00a8fc);
+    clip-path: polygon(50% 0, 100% 100%, 0 100%);
 }
 
-.vr-info-dot-you-joined,
-.vr-info-kind-you-joined {
-    color: var(--status-positive, #23a55a);
+/* A pause has no move behind it, so its arrow stops at the block below instead of leaving a channel. */
+.vr-stay-link-pause {
+    height: 22px;
+    border-left: 2px dashed var(--vr-text-muted);
 }
 
-.vr-info-dot-you-joined {
-    background: transparent;
-    box-shadow: inset 0 0 0 2px var(--status-positive, #23a55a);
-}
-
-.vr-info-dot-left {
+.vr-stay-link-pause::before {
     background: var(--vr-text-muted);
 }
 
-.vr-info-dot-you-left {
-    background: transparent;
-    box-shadow: inset 0 0 0 2px var(--vr-text-muted);
-}
-
-.vr-info-kind-left,
-.vr-info-kind-you-left {
+.vr-stay-link-note {
+    position: absolute;
+    top: 3px;
+    left: 10px;
     color: var(--vr-text-muted);
+    font-size: 12px;
+    line-height: 16px;
+    white-space: nowrap;
 }
 
-.vr-info-when {
-    flex: 0 0 42px;
-    font-variant-numeric: tabular-nums;
-    color: var(--vr-text-muted);
+.vr-stay-head {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    width: fit-content;
+    max-width: 100%;
+    padding: 2px 0 6px;
+    color: var(--vr-text-strong);
+    font-weight: 700;
+    cursor: pointer;
 }
 
-.vr-info-kind {
-    flex: 0 0 72px;
-    font-weight: 600;
-}
-
-.vr-info-where {
+.vr-stay-head-name {
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.vr-stay-head:hover .vr-stay-head-name {
+    text-decoration: underline;
+}
+
+/* The rail reaches up to the channel's icon, since everything below it happened in that channel. */
+.vr-stay-head::after {
+    content: "";
+    position: absolute;
+    left: 6px;
+    bottom: 0;
+    height: 8px;
+    border-left: 2px solid var(--vr-rail);
+}
+
+.vr-stay-head-shared {
+    --vr-rail: var(--vr-brand);
+}
+
+/* The arrowhead of the line that starts at the row which brought the person into this channel. */
+.vr-stay-head-enter::before {
+    content: "";
+    position: absolute;
+    left: 3px;
+    bottom: 3px;
+    z-index: 1;
+    width: 8px;
+    height: 7px;
+    background: var(--vr-stay-arrow);
+    clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+
+.vr-stay-arrow-in {
+    --vr-stay-arrow: var(--vr-green-text);
+}
+
+.vr-stay-arrow-move {
+    --vr-stay-arrow: var(--text-link, #00a8fc);
+}
+
+.vr-stay-row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 26px;
+    margin-left: 6px;
+    padding: 3px 6px 3px 30px;
+    border-left: 2px solid var(--vr-rail);
+    border-radius: 0 6px 6px 0;
+    font-size: 13px;
     cursor: pointer;
 }
 
-.vr-info-where:hover {
-    text-decoration: underline;
+.vr-stay-row:hover {
+    background: var(--vr-mod);
+}
+
+.vr-stay-row-inside {
+    padding-left: 44px;
+    font-size: 12.5px;
+}
+
+.vr-stay-row-shared {
+    --vr-rail: var(--vr-brand);
+}
+
+/* Events hang off the rail on a branch, so it is clear they happened along that line. */
+.vr-stay-row-inside::before,
+.vr-stay-row-start:not(.vr-stay-row-enter)::before {
+    content: "";
+    position: absolute;
+    top: calc(50% - 1px);
+    left: 0;
+    width: 15px;
+    height: 2px;
+    background: var(--vr-rail);
+}
+
+.vr-stay-row-inside::before {
+    width: 29px;
+}
+
+.vr-stay-row-inside::after,
+.vr-stay-row-start:not(.vr-stay-row-enter)::after {
+    content: "";
+    position: absolute;
+    top: calc(50% - 3px);
+    left: 15px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentcolor;
+}
+
+.vr-stay-row-inside::after {
+    left: 29px;
+}
+
+/* The rail bends into this row, so the line runs from here up to the channel's name. */
+.vr-stay-row-enter {
+    border-left-color: transparent;
+}
+
+.vr-stay-row-enter::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: calc(50% - 1px);
+    left: -2px;
+    width: 18px;
+    border-left: 2px solid var(--vr-rail);
+    border-bottom: 2px solid var(--vr-rail);
+    border-bottom-left-radius: 9px;
+}
+
+.vr-stay-row-enter::after {
+    content: "";
+    position: absolute;
+    top: calc(50% - 3px);
+    left: 15px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentcolor;
+}
+
+/* A line leaves from under the channel's name and ends in an arrowhead at the row that took the person out. */
+.vr-stay-row-end::before {
+    content: "";
+    position: absolute;
+    top: -8px;
+    bottom: calc(50% - 1px);
+    left: 6px;
+    width: 12px;
+    border-left: 2px solid currentcolor;
+    border-bottom: 2px solid currentcolor;
+    border-bottom-left-radius: 8px;
+}
+
+.vr-stay-row-end::after {
+    content: "";
+    position: absolute;
+    top: calc(50% - 4px);
+    left: 20px;
+    width: 7px;
+    height: 8px;
+    background: currentcolor;
+    clip-path: polygon(0 0, 100% 50%, 0 100%);
+}
+
+/* The plugin was not watching for part of the time below this row. */
+.vr-stay-row-gap {
+    border-left-style: dashed;
+}
+
+.vr-stay-when {
+    flex: 0 0 40px;
+    color: var(--vr-text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.vr-stay-when-unknown {
+    color: var(--vr-amber);
+    font-weight: 800;
+}
+
+.vr-stay-icon {
+    display: inline-flex;
+    flex: 0 0 auto;
+}
+
+.vr-stay-kind {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 600;
+}
+
+.vr-stay-row-inside .vr-stay-kind {
+    font-weight: 500;
+}
+
+.vr-stay-notes {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    margin-left: auto;
+}
+
+.vr-stay-note {
+    color: var(--vr-text-muted);
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.vr-stay-tone-in {
+    color: var(--vr-green-text);
+}
+
+.vr-stay-tone-move {
+    color: var(--text-link, #00a8fc);
+}
+
+.vr-stay-tone-out {
+    color: var(--vr-text-muted);
+}
+
+.vr-stay-tone-you {
+    color: var(--vr-brand-text);
+}
+
+.vr-stay-tone-stream {
+    color: var(--vr-red-text);
+}
+
+.vr-stay-tone-camera {
+    color: var(--vr-amber);
+}
+
+.vr-info-more {
+    align-self: center;
+    margin-top: 14px;
+}
+
+.vr-avatar-stack {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+}
+
+.vr-avatar-stack:empty {
+    display: none;
+}
+
+.vr-stack-avatar {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    object-fit: cover;
+    box-shadow: 0 0 0 2px var(--vr-raised);
+    cursor: pointer;
+    transition: box-shadow 0.12s ease;
+}
+
+.vr-stack-avatar:hover {
+    box-shadow: 0 0 0 2px var(--vr-brand);
+}
+
+.vr-stack-more {
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: var(--vr-mod-strong);
+    color: var(--vr-text-muted);
+    font-size: 12px;
+    font-weight: 700;
 }
 
 .vr-info-empty {

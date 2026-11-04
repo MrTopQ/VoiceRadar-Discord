@@ -18,7 +18,7 @@
 
 import { openUserProfile } from "@utils/discord";
 import { sleep } from "@utils/misc";
-import { RelationshipStore, UserStore, UserUtils } from "@webpack/common";
+import { FluxDispatcher, RelationshipStore, UserStore, UserUtils } from "@webpack/common";
 
 import { type ApiHealth, HealthReport, isFn } from "./apiHealth";
 import { T } from "./i18n";
@@ -144,6 +144,11 @@ export async function warmUpUsers(ids: string[], onProgress: () => void, keepGoi
 export function openProfile(id: string): void {
     openUserProfile(id).catch(error =>
         console.warn("[VoiceRadar-Discord] could not open profile", id, error));
+}
+
+/** Discord's full profile lies over the plugin's windows and its side panels, so showing one of those closes it first. */
+export function closeProfile(): void {
+    FluxDispatcher.dispatch({ type: "USER_PROFILE_MODAL_CLOSE" } as any);
 }
 
 export function resetUserLookups(): void {

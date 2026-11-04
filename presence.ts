@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-import { ChannelStore, FluxDispatcher, PresenceStore } from "@webpack/common";
+import { ChannelStore, FluxDispatcher, PresenceStore, RelationshipStore } from "@webpack/common";
 
 import { type ApiHealth, HealthReport, isFn } from "./apiHealth";
 import { voiceStateForUser } from "./channels";
@@ -168,8 +168,9 @@ export function requestPresences(userIds: string[]): void {
     const now = Date.now();
     if (now - lastPresenceRequestAt < PRESENCE_REQUEST_GAP_MS) return;
 
+    // Discord reports on friends by itself, so one without data is simply offline.
     const missing = userIds
-        .filter(userId => !hasPresenceData(userId))
+        .filter(userId => !hasPresenceData(userId) && !(RelationshipStore as any)?.isFriend?.(userId))
         .filter(userId => now - (presenceRequestedAt.get(userId) ?? 0) > PRESENCE_REQUEST_COOLDOWN_MS)
         .slice(0, MAX_USERS_PER_REQUEST);
 

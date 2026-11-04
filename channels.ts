@@ -38,6 +38,8 @@ export interface VoiceInfo {
     canView: boolean;
     canJoin: boolean;
     isFull: boolean;
+    /** At its user limit, yet you may join, since Move Members lets you past it. */
+    fullButAllowed: boolean;
 }
 
 export function getMyChannelId(): string | null {
@@ -160,9 +162,13 @@ export function getChannelAccess(channel: any): { canView: boolean; canJoin: boo
     }
 }
 
-export function isChannelFull(channel: any, memberCount: number): boolean {
+export function isAtUserLimit(channel: any, memberCount: number): boolean {
     const limit = Number(channel?.userLimit) || 0;
-    if (limit <= 0 || memberCount < limit) return false;
+    return limit > 0 && memberCount >= limit;
+}
+
+export function isChannelFull(channel: any, memberCount: number): boolean {
+    if (!isAtUserLimit(channel, memberCount)) return false;
 
     try {
         return !PermissionStore.can(PermissionsBits.MOVE_MEMBERS, channel);
@@ -208,6 +214,7 @@ function buildChannelInfo(channelId: string): VoiceInfo {
     const memberStates = voiceStatesForChannel(channelId);
     const participantIds = Object.keys(memberStates);
     const { canView, canJoin } = getChannelAccess(channel);
+    const isFull = isChannelFull(channel, participantIds.length);
 
     return {
         channelId,
@@ -223,7 +230,8 @@ function buildChannelInfo(channelId: string): VoiceInfo {
         isMyChannel: channelId === getMyChannelId(),
         canView,
         canJoin,
-        isFull: isChannelFull(channel, participantIds.length)
+        isFull,
+        fullButAllowed: !isFull && isAtUserLimit(channel, participantIds.length)
     };
 }
 
