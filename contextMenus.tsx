@@ -17,7 +17,7 @@
 */
 
 import { findGroupChildrenByChildId, NavContextMenuPatchCallback } from "@api/ContextMenu";
-import { Menu, UserStore } from "@webpack/common";
+import { Menu, React, UserStore } from "@webpack/common";
 import type { ReactElement } from "react";
 
 import { toggleAutoJoinFor, toggleMagnetFor, toggleNotifyFor, togglePinFor } from "./actions";
@@ -35,7 +35,7 @@ import { closeProfile, getStoredName, getUserDisplayName, UNKNOWN_NAME } from ".
 import { canMoveGroupTo, moveGroupTo, pullTheirChannelToMe, pullToMyChannel, pullUsersToMe } from "./pull";
 import { cancelQueue, isQueuedFor, queueForChannel } from "./queue";
 import { settings } from "./settings";
-import { addUser, addUsers, getTrackedUser, removeUser } from "./store";
+import { addUser, addUsers, getTrackedUser, removeUser, subscribeToStore } from "./store";
 import { toast, ToastType } from "./toast";
 
 interface UserContextProps {
@@ -76,13 +76,15 @@ function menuParts() {
     };
 }
 
-function userEntries({ user, guildId }: UserContextProps): ReactElement[] | null {
+function useUserEntries({ user, guildId }: UserContextProps): ReactElement[] | null {
+    // Discord reads the ticks only when it draws the menu, so a change has to redraw it.
+    const tracked = React.useSyncExternalStore(subscribeToStore, () => getTrackedUser(user?.id ?? ""));
+
     noteOurMenu("user");
     const { CheckboxItem, Separator } = menuParts();
     if (!user?.id) return null;
     if (user.id === UserStore.getCurrentUser()?.id) return null;
 
-    const tracked = getTrackedUser(user.id);
     const storedName = getStoredName(user.id, user.username ?? UNKNOWN_NAME);
     const name = getUserDisplayName(user.id, storedName);
     const voice = getVoiceInfo(user.id);
@@ -208,13 +210,13 @@ function userEntries({ user, guildId }: UserContextProps): ReactElement[] | null
 }
 
 export const userContextPatch: NavContextMenuPatchCallback = (children, props: UserContextProps) => {
-    const entries = userEntries(props);
+    const entries = useUserEntries(props);
     if (entries) insertNearAnchor(children, ...entries);
 };
 
 /** The "…" menu of a full profile has none of the anchors, so the entries get a section of their own under its first one. */
 export const profileMenuPatch: NavContextMenuPatchCallback = (children, props: UserContextProps) => {
-    const entries = userEntries(props);
+    const entries = useUserEntries(props);
     if (!entries) return;
 
     const Group = (Menu as any).MenuGroup;

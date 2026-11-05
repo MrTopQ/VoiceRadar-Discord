@@ -936,6 +936,7 @@
 .vr-clear:focus-visible,
 .vr-close:focus-visible,
 .vr-status:focus-visible,
+.vr-follow-person:focus-visible,
 .vr-follow-remove:focus-visible {
     outline: 2px solid var(--vr-brand);
     outline-offset: 1px;
@@ -1173,6 +1174,23 @@
     border-radius: 12px;
     background-color: var(--vr-raised);
     background-image: linear-gradient(90deg, color-mix(in srgb, var(--vr-brand) 16%, transparent), transparent 70%);
+}
+
+.vr-follow-person {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: -6px 0 -6px -8px;
+    padding: 6px 8px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.12s ease;
+}
+
+.vr-follow-person:hover {
+    background: var(--vr-mod-strong);
 }
 
 .vr-follow-avatar-wrap {

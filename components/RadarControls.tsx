@@ -36,6 +36,7 @@ import { Hint } from "./Hint";
 import { ClockIcon, CloseIcon, GearIcon, GlobeIcon, KeyboardIcon, MicIcon, MicOffIcon, PulseIcon, ReturnIcon, SearchIcon, TargetIcon, TrashIcon } from "./icons";
 import { TYPE_TARGET_ATTRIBUTE } from "./Overlay";
 import { openPluginSettings } from "./pluginSettings";
+import { personActions } from "./VoicePeople";
 
 function HotkeyRecorder() {
     const [recording, setRecording] = useState(false);
@@ -235,14 +236,16 @@ export function FollowCard({ onChanged }: { onChanged: () => void; }) {
 
     return (
         <div className={cl("follow") + (voice ? " " + cl("follow-live") : "")}>
-            <div className={cl("follow-avatar-wrap")}>
-                <img className={cl("follow-avatar")} src={getAvatarUrl(target.id) ?? DEFAULT_AVATAR_URL} alt="" />
-                <span className={cl("follow-mark")}><TargetIcon size={12} /></span>
-            </div>
-            <div className={cl("follow-info")}>
-                <div className={cl("follow-title")}>{T.followTitle(name)}</div>
-                <div className={cl("follow-where")}>
-                    {voice ? T.followWhere(channelLabel(voice)) : T.followNotInVoice}
+            <div {...personActions(target.id)} className={cl("follow-person")}>
+                <div className={cl("follow-avatar-wrap")}>
+                    <img className={cl("follow-avatar")} src={getAvatarUrl(target.id) ?? DEFAULT_AVATAR_URL} alt="" />
+                    <span className={cl("follow-mark")}><TargetIcon size={12} /></span>
+                </div>
+                <div className={cl("follow-info")}>
+                    <div className={cl("follow-title")}>{T.followTitle(name)}</div>
+                    <div className={cl("follow-where")}>
+                        {voice ? T.followWhere(channelLabel(voice)) : T.followNotInVoice}
+                    </div>
                 </div>
             </div>
             <button
