@@ -547,6 +547,117 @@
     gap: 8px;
 }
 
+/* Smaller than the two lists beside it. */
+.vr-segment.vr-tab-small {
+    gap: 5px;
+    padding: 0 9px;
+    font-size: 12.5px;
+}
+
+.vr-activity-filter {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 0 20px 10px;
+}
+
+.vr-segment.vr-activity-choice {
+    height: 26px;
+    padding: 0 10px;
+    font-size: 12.5px;
+}
+
+.vr-activity-filter-hint {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--vr-text-muted);
+    font-size: 12px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.vr-activity-day {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 14px;
+}
+
+.vr-activity-kind {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 6px;
+}
+
+.vr-activity-place {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--vr-text-muted);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.vr-activity-place:hover {
+    color: var(--vr-text-strong);
+}
+
+.vr-activity-row .vr-stay-notes {
+    justify-content: flex-start;
+    margin-left: 0;
+}
+
+.vr-activity-row .vr-info-button {
+    margin-left: 0;
+}
+
+.vr-activity-side {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+    padding-right: 4px;
+}
+
+.vr-activity-time {
+    color: var(--vr-text-muted);
+    font-size: 12.5px;
+    font-variant-numeric: tabular-nums;
+}
+
+.vr-activity-faces {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.vr-activity-face {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    object-fit: cover;
+    cursor: pointer;
+}
+
+/* Fades out on a row that arrived while the tab was open. */
+.vr-activity-row-new {
+    animation: vr-activity-in 1.6s ease-out both;
+}
+
+@keyframes vr-activity-in {
+    from {
+        background-color: var(--vr-brand-soft);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .vr-activity-row-new {
+        animation: none;
+    }
+}
+
 /* One stay in a channel, its events on a rail that takes the accent colour while you sat together. */
 .vr-stay {
     --vr-rail: color-mix(in srgb, var(--vr-text-muted) 55%, transparent);
@@ -692,7 +803,7 @@
     --vr-rail: var(--vr-brand);
 }
 
-/* Events hang off the rail on a branch, so it is clear they happened along that line. */
+/* Events hang off the rail on a branch, a border because that keeps its weight at any plugin size. */
 .vr-stay-row-inside::before,
 .vr-stay-row-start:not(.vr-stay-row-enter)::before {
     content: "";
@@ -700,8 +811,7 @@
     top: calc(50% - 1px);
     left: 0;
     width: 15px;
-    height: 2px;
-    background: var(--vr-rail);
+    border-top: 2px solid var(--vr-rail);
 }
 
 .vr-stay-row-inside::before {
@@ -726,7 +836,8 @@
 
 /* The rail bends into this row, so the line runs from here up to the channel's name. */
 .vr-stay-row-enter {
-    border-left-color: transparent;
+    padding-left: 32px;
+    border-left-width: 0;
 }
 
 .vr-stay-row-enter::before {
@@ -734,7 +845,7 @@
     position: absolute;
     top: 0;
     bottom: calc(50% - 1px);
-    left: -2px;
+    left: 0;
     width: 18px;
     border-left: 2px solid var(--vr-rail);
     border-bottom: 2px solid var(--vr-rail);
@@ -745,7 +856,7 @@
     content: "";
     position: absolute;
     top: calc(50% - 3px);
-    left: 15px;
+    left: 17px;
     width: 6px;
     height: 6px;
     border-radius: 50%;

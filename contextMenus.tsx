@@ -20,11 +20,11 @@ import { findGroupChildrenByChildId, NavContextMenuPatchCallback } from "@api/Co
 import { Menu, UserStore } from "@webpack/common";
 import type { ReactElement } from "react";
 
-import { toggleAutoJoinFor, toggleMagnetFor } from "./actions";
+import { toggleAutoJoinFor, toggleMagnetFor, toggleNotifyFor, togglePinFor } from "./actions";
 import { getChannelInfo, getVoiceInfo } from "./channels";
 import { modViewMenuItems } from "./components/ModViewMenu";
 import { openPersonInfo } from "./components/PersonInfoModal";
-import { openRadarModal } from "./components/RadarModal";
+import { showRadar } from "./components/RadarModal";
 import { refreshGuildSubscriptions } from "./guildSubscriptions";
 import { T } from "./i18n";
 import { joinVoiceChannel } from "./join";
@@ -35,7 +35,7 @@ import { closeProfile, getStoredName, getUserDisplayName, UNKNOWN_NAME } from ".
 import { canMoveGroupTo, moveGroupTo, pullTheirChannelToMe, pullToMyChannel, pullUsersToMe } from "./pull";
 import { cancelQueue, isQueuedFor, queueForChannel } from "./queue";
 import { settings } from "./settings";
-import { addUser, addUsers, getTrackedUser, removeUser, toggleNotify, togglePin } from "./store";
+import { addUser, addUsers, getTrackedUser, removeUser } from "./store";
 import { toast, ToastType } from "./toast";
 
 interface UserContextProps {
@@ -112,19 +112,13 @@ function userEntries({ user, guildId }: UserContextProps): ReactElement[] | null
                 id="voice-radar-pin"
                 label={T.menuPin}
                 checked={!!tracked?.pinned}
-                action={() => {
-                    if (!tracked) addUser(user.id, storedName, { pinned: true });
-                    else togglePin(user.id);
-                }}
+                action={() => togglePinFor(user.id, storedName)}
             />
             <CheckboxItem
                 id="voice-radar-notify"
                 label={T.menuNotify}
                 checked={!!tracked?.notify}
-                action={() => {
-                    if (!tracked) addUser(user.id, storedName, { notify: true });
-                    else toggleNotify(user.id);
-                }}
+                action={() => toggleNotifyFor(user.id, storedName)}
             />
             <CheckboxItem
                 id="voice-radar-autojoin"
@@ -155,7 +149,7 @@ function userEntries({ user, guildId }: UserContextProps): ReactElement[] | null
                 label={T.menuOpenRadar}
                 action={() => {
                     closeProfile();
-                    openRadarModal();
+                    showRadar();
                 }}
             />
             {showModeration && (
@@ -300,7 +294,7 @@ export const channelContextPatch: NavContextMenuPatchCallback = (children, { cha
             <Menu.MenuItem
                 id="voice-radar-channel-open"
                 label={T.menuOpenRadar}
-                action={openRadarModal}
+                action={showRadar}
             />
         </Menu.MenuItem>
     ));

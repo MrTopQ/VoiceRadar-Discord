@@ -17,17 +17,19 @@
 */
 
 import { useForceUpdater } from "@utils/react";
-import { useEffect, UserStore } from "@webpack/common";
+import { useEffect, UserStore, useState } from "@webpack/common";
 import type { KeyboardEvent, MouseEvent, ReactNode } from "react";
 
 import { getChannelInfo } from "../channels";
 import { T } from "../i18n";
 import { DEFAULT_AVATAR_URL, getAvatarUrl, getUserDisplayName, openProfile, warmUpUsers } from "../names";
-import { requestPresences } from "../presence";
+import { deviceNote, INVISIBLE_NOTE, readDeviceNote, requestPresences } from "../presence";
 import type { Sighting } from "../sightings";
+import { isSpeaking, watchSpeaking } from "../speaking";
 import { openUserMenu } from "../userMenu";
-import { cl } from "./common";
+import { cl, PlatformIcons } from "./common";
 import { closeOpenHint, Hint } from "./Hint";
+import { InvisibleIcon } from "./icons";
 
 const HINT_MAX_PEOPLE = 10;
 /** Two lists side by side in a hint, so each stays short. */
@@ -61,7 +63,7 @@ export function YouTag() {
 }
 
 /** A left click opens the person's profile and a right click Discord's menu for them, as on a radar row. */
-function personActions(id: string) {
+export function personActions(id: string) {
     const open = () => {
         closeOpenHint();
         openProfile(id);
@@ -80,6 +82,8 @@ function personActions(id: string) {
             closeOpenHint();
         },
         onKeyDown: (event: KeyboardEvent) => {
+            // A button inside the row keeps its own Enter and Space.
+            if (event.target !== event.currentTarget) return;
             if (event.key !== "Enter" && event.key !== " ") return;
             event.preventDefault();
             event.stopPropagation();
@@ -88,8 +92,27 @@ function personActions(id: string) {
     };
 }
 
+export function SpeakingAvatar({ userId, src, alt }: { userId: string; src: string; alt: string; }) {
+    const [speaking, setSpeaking] = useState(() => isSpeaking(userId));
+
+    useEffect(() => {
+        const update = () => setSpeaking(isSpeaking(userId));
+        update();
+        return watchSpeaking(update);
+    }, [userId]);
+
+    return <img className={cl("avatar") + (speaking ? " " + cl("avatar-speaking") : "")} src={src} alt={alt} />;
+}
+
 /** Avatar and name a line each, for the hints. */
-export function PeopleRows({ ids, total = ids.length, max = HINT_MAX_PEOPLE }: { ids: string[]; total?: number; max?: number; }) {
+export function DeviceMark({ note }: { note: string; }) {
+    if (note !== INVISIBLE_NOTE) return <PlatformIcons platforms={readDeviceNote(note)} />;
+
+    return <span className={cl("platform") + " " + cl("platform-invisible")} title={T.platformInvisible}><InvisibleIcon size={14} /></span>;
+}
+
+/** Shows what each person is on now, or what they were on when notes for that moment are given. */
+export function PeopleRows({ ids, total = ids.length, max = HINT_MAX_PEOPLE, notes }: { ids: string[]; total?: number; max?: number; notes?: string[]; }) {
     const shown = ids.slice(0, max);
     useKnownUsers(shown);
 
@@ -98,11 +121,12 @@ export function PeopleRows({ ids, total = ids.length, max = HINT_MAX_PEOPLE }: {
 
     return (
         <>
-            {shown.map(id => (
+            {shown.map((id, index) => (
                 <div key={id} {...personActions(id)} className={cl("vc-tooltip-row") + " " + cl("person")}>
                     <img className={cl("tip-avatar")} src={getAvatarUrl(id) ?? DEFAULT_AVATAR_URL} alt="" />
-                    {getUserDisplayName(id)}
+                    <span className={cl("person-name")}>{getUserDisplayName(id)}</span>
                     {id === me && <YouTag />}
+                    <DeviceMark note={notes ? notes[index] ?? "" : deviceNote(id)} />
                 </div>
             ))}
             {rest > 0 && <div className={cl("dim")}>{T.tooltipAndMore(rest)}</div>}
@@ -143,12 +167,13 @@ function ThenColumn({ line, userId }: { line: Sighting; userId: string; }) {
     const left = line.kind === "left";
     const ids = left ? others : [userId, ...others];
     const total = (line.withCount ?? others.length) + (left ? 0 : 1);
+    const notes = left ? line.devices?.slice(1) : line.devices;
 
     return (
         <div className={cl("place-hint-column")}>
             <div className={cl("vc-tooltip-title")}>{left ? T.journalStayed : T.journalThen}</div>
             {ids.length
-                ? <PeopleRows ids={ids} total={total} max={PLACE_HINT_PEOPLE} />
+                ? <PeopleRows ids={ids} total={total} max={PLACE_HINT_PEOPLE} notes={notes ?? []} />
                 : <div className={cl("dim")}>{T.journalStayedNobody}</div>}
         </div>
     );

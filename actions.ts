@@ -16,9 +16,10 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-import { getMyGuildId, getVoiceInfo } from "./channels";
+import { getMyChannelId, getMyGuildId, getVoiceInfo } from "./channels";
 import { T } from "./i18n";
 import { forgetPullHistory, magnetCooldownLeft } from "./magnet";
+import { getMoveAccess } from "./movePermissions";
 import { getUserDisplayName } from "./names";
 import { pullToMyChannel } from "./pull";
 import { cancelQueue, getQueueEntry } from "./queue";
@@ -31,7 +32,9 @@ import {
     setAutoJoinTarget,
     setAutoPullTarget,
     toggleAutoJoin,
-    toggleAutoPull
+    toggleAutoPull,
+    toggleNotify,
+    togglePin
 } from "./store";
 import { toast, ToastType } from "./toast";
 import { forgetFollowRefusals, keepFollowing, MAX_FORCED_RETURNS } from "./tracker";
@@ -48,6 +51,18 @@ export function describeAutoJoinPace(): string {
             : T.autoJoinPace(used);
 
     return `${pace} ${T.autoJoinReturns(MAX_FORCED_RETURNS)}`;
+}
+
+/** What the magnet's button says about the person right now. */
+export function describeMagnet(isOn: boolean, userId: string): string {
+    if (!isOn) return T.magnetOff;
+    if (!getMyChannelId()) return T.magnetIdleNotConnected;
+
+    const voice = getVoiceInfo(userId);
+    if (!voice) return T.magnetIdleTargetOffline;
+    if (voice.guildId !== getMyGuildId()) return T.magnetIdleOtherGuild;
+
+    return getMoveAccess(userId) === "no" ? T.magnetIdleNoPermission : T.magnetActive;
 }
 
 export type MagnetResult = "on" | "off" | "cooling";
@@ -117,6 +132,16 @@ export function toggleMagnetFor(userId: string, storedName: string) {
     if (voice && !voice.isMyChannel && voice.guildId === getMyGuildId()) void pullToMyChannel(userId);
 
     toast(T.magnetOnFor(name), ToastType.SUCCESS);
+}
+
+export function togglePinFor(userId: string, storedName: string) {
+    if (isTracked(userId)) togglePin(userId);
+    else addUser(userId, storedName, { pinned: true });
+}
+
+export function toggleNotifyFor(userId: string, storedName: string) {
+    if (isTracked(userId)) toggleNotify(userId);
+    else addUser(userId, storedName, { notify: true });
 }
 
 export function toggleAutoJoinFor(userId: string, storedName: string) {

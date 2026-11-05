@@ -84,6 +84,25 @@ export function revealWindow(event: IpcMainInvokeEvent): void {
     if (window) bringUp(window);
 }
 
+/** The radar's popout, found by the name Discord opened it under. */
+const RADAR_WINDOW_NAME = "DISCORD_VoiceRadar";
+
+function radarWindow(): BrowserWindow | undefined {
+    return BrowserWindow.getAllWindows().find(window => !window.isDestroyed() && window.webContents.mainFrame.name === RADAR_WINDOW_NAME);
+}
+
+export function hideRadarWindow(_event: IpcMainInvokeEvent): boolean {
+    const window = radarWindow();
+    window?.hide();
+    return window != null;
+}
+
+export function showRadarWindow(_event: IpcMainInvokeEvent): boolean {
+    const window = radarWindow();
+    if (window) bringUp(window);
+    return window != null;
+}
+
 function putBack(window: BrowserWindow) {
     if (!raisedByHotkey) return;
 

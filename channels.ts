@@ -249,6 +249,12 @@ export function getChannelParticipantIds(channelId: string): string[] {
     return Object.keys(voiceStatesForChannel(channelId));
 }
 
+/** Everybody else in your voice channel, nobody while you are alone or out of voice. */
+export function getPeopleWithMe(myId: string | undefined): string[] {
+    const channelId = getMyChannelId();
+    return channelId ? getChannelParticipantIds(channelId).filter(id => id !== myId) : [];
+}
+
 export function getVoiceCoverage(): { guilds: number; states: number; } {
     let guilds = 0;
     let states = 0;

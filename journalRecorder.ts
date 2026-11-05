@@ -20,6 +20,7 @@ import { ChannelStore } from "@webpack/common";
 
 import { channelLabel, getChannelInfo, getChannelParticipantIds, getMyChannelId, voiceStateForUser } from "./channels";
 import { isWatchingVoiceOf } from "./guildSubscriptions";
+import { deviceNote } from "./presence";
 import { getLatestSighting, placeAfter, recordSighting, type Sighting } from "./sightings";
 import { getTrackedUser, getUsers } from "./store";
 import { getWatchSpans, watchedThrough, type WatchSpan } from "./watchLog";
@@ -35,10 +36,16 @@ const VIDEO = 2;
 
 export const mediaOf = (state: any): number => (state?.selfStream ? STREAM : 0) | (state?.selfVideo ? VIDEO : 0);
 
-function companions(channelId: string, userId: string): Pick<Sighting, "with" | "withCount"> {
+function companions(channelId: string, userId: string): Pick<Sighting, "with" | "withCount" | "devices"> {
     const others = getChannelParticipantIds(channelId).filter(id => id !== userId);
     const named = others.slice(0, COMPANIONS_KEPT);
-    return others.length > named.length ? { with: named, withCount: others.length } : { with: named };
+    const devices = [userId, ...named].map(deviceNote);
+
+    return {
+        with: named,
+        ...(others.length > named.length ? { withCount: others.length } : {}),
+        ...(devices.some(Boolean) ? { devices } : {})
+    };
 }
 
 function where(channelId: string): Pick<Sighting, "channelId" | "channelLabel" | "withYou"> {

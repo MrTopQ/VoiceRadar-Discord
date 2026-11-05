@@ -20,6 +20,7 @@ import { classNameFactory } from "@utils/css";
 import { ReactDOM, useEffect, useLayoutEffect, useRef, useState } from "@webpack/common";
 import type { ReactNode, SyntheticEvent } from "react";
 
+import { zoomOf } from "./dom";
 import { type HintPlacement, placeHint } from "./hintPlacement";
 
 // Its own factory, because common.tsx imports this file.
@@ -60,7 +61,7 @@ interface BubbleHandlers {
 
 const stopClick = (event: SyntheticEvent) => event.stopPropagation();
 
-function Bubble({ anchor, text, handlers }: { anchor: Anchor; text: ReactNode; handlers: BubbleHandlers; }) {
+function Bubble({ anchor, text, interactive, handlers }: { anchor: Anchor; text: ReactNode; interactive: boolean; handlers: BubbleHandlers; }) {
     const ref = useRef<HTMLDivElement>(null);
     const [place, setPlace] = useState<HintPlacement | null>(null);
 
@@ -70,7 +71,7 @@ function Bubble({ anchor, text, handlers }: { anchor: Anchor; text: ReactNode; h
 
         const measure = () => {
             const { width, height } = bubble.getBoundingClientRect();
-            setPlace(placeHint(anchor.rect, { width, height }, anchor.view.innerWidth, anchor.view.innerHeight));
+            setPlace(placeHint(anchor.rect, { width, height }, anchor.view.innerWidth, anchor.view.innerHeight, zoomOf(bubble)));
         };
 
         measure();
@@ -84,7 +85,7 @@ function Bubble({ anchor, text, handlers }: { anchor: Anchor; text: ReactNode; h
     return (
         <div
             ref={ref}
-            className={cl("hint") + (place?.below ? " " + cl("hint-below") : "")}
+            className={[cl("hint"), place?.below && cl("hint-below"), !interactive && cl("hint-plain")].filter(Boolean).join(" ")}
             role="tooltip"
             onMouseEnter={handlers.keep}
             onMouseLeave={handlers.leave}
@@ -100,8 +101,11 @@ function Bubble({ anchor, text, handlers }: { anchor: Anchor; text: ReactNode; h
     );
 }
 
-/** Discord's Tooltip draws nothing outside Discord's React tree, so the windows use this one. */
-export function Hint({ text, children }: { text: ReactNode; children: (props: HintTargetProps) => ReactNode; }) {
+/**
+ * Discord's Tooltip draws nothing outside Discord's React tree, so the windows use this one.
+ * It goes with the pointer, an interactive one waits to be reached because it holds something to click.
+ */
+export function Hint({ text, interactive = false, children }: { text: ReactNode; interactive?: boolean; children: (props: HintTargetProps) => ReactNode; }) {
     const [anchor, setAnchor] = useState<Anchor | null>(null);
     const showTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
     const hideTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -123,7 +127,10 @@ export function Hint({ text, children }: { text: ReactNode; children: (props: Hi
     const leave = () => {
         clearTimeout(showTimer.current);
         clearTimeout(hideTimer.current);
-        if (openHint === self.current) hideTimer.current = setTimeout(close, HIDE_DELAY_MS);
+        if (openHint !== self.current) return;
+
+        if (interactive) hideTimer.current = setTimeout(close, HIDE_DELAY_MS);
+        else close();
     };
 
     const show = (event: SyntheticEvent<HTMLElement>) => {
@@ -177,7 +184,7 @@ export function Hint({ text, children }: { text: ReactNode; children: (props: Hi
     let bubble: ReactNode = null;
     try {
         bubble = ReactDOM.createPortal(
-            <Bubble anchor={anchor} text={text} handlers={{ keep, leave, close }} />,
+            <Bubble anchor={anchor} text={text} interactive={interactive} handlers={{ keep, leave, close }} />,
             anchor.view.document.body
         );
     } catch (error) {

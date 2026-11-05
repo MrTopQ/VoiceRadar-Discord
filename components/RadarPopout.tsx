@@ -18,19 +18,22 @@
 
 import ErrorBoundary from "@components/ErrorBoundary";
 import { findByPropsLazy, findComponentByCodeLazy, findStoreLazy, mapMangledModuleLazy } from "@webpack";
-import { createRoot, FluxDispatcher, React, useEffect, useLayoutEffect, useMemo, useRef, useState } from "@webpack/common";
+import { createRoot, FluxDispatcher, React, ReactDOM, useEffect, useLayoutEffect, useMemo, useRef, useState } from "@webpack/common";
 import type { ReactNode } from "react";
 
 import { proveWorking, reportBroken } from "../apiHealth";
 import type { ConfirmOptions } from "../confirm";
 import { isTypingKey } from "../hotkey";
 import { T } from "../i18n";
+import { Native } from "../mainProcess";
+import { sizePopout } from "../pluginSize";
+import { getPluginScale, settings } from "../settings";
 import { toast, type ToastKind, ToastType } from "../toast";
-import { cl } from "./common";
+import { cl, HeadButton } from "./common";
 import { asElement, takesText } from "./dom";
-import { Hint } from "./Hint";
-import { MinimizeIcon, OnTopIcon, PopInIcon, PopOutIcon } from "./icons";
+import { OnTopIcon, PopInIcon, PopOutIcon } from "./icons";
 import { TYPE_TARGET_ATTRIBUTE } from "./Overlay";
+import { PopoutOptionsButton } from "./PopoutOptions";
 
 /** Discord's main process opens a popout only when its name starts like Discord's own. */
 const POPOUT_KEY = "DISCORD_VoiceRadar";
@@ -127,6 +130,11 @@ export function canPopOut(): boolean {
     return typeof IS_DISCORD_DESKTOP !== "undefined" && IS_DISCORD_DESKTOP && typeof nativeWindow()?.minimize === "function";
 }
 
+/** Whether the hotkey and the panel button open the radar straight in its own window. */
+export function opensInOwnWindow(): boolean {
+    return !!settings.store.openInOwnWindow && canPopOut();
+}
+
 export function isRadarPopoutFocused(): boolean {
     return read(() => PopoutWindowStore.getWindowFocused(POPOUT_KEY)) === true;
 }
@@ -179,6 +187,15 @@ export function isRadarPoppedOut(): boolean {
     return read(() => PopoutWindowStore.getWindowOpen(POPOUT_KEY)) === true;
 }
 
+/** A hidden window stays alive with nothing drawn in it, so it costs no redraws. */
+let hiddenAway = false;
+let setShellAwake: ((awake: boolean) => void) | null = null;
+
+/** Open and not minimised or hidden. */
+export function isRadarPopoutShown(): boolean {
+    return isRadarPoppedOut() && !hiddenAway && read(() => PopoutWindowStore.getWindowVisible(POPOUT_KEY)) !== false;
+}
+
 let renderRadar: ((close: () => void) => ReactNode) | null = null;
 
 export function closeRadarPopout() {
@@ -187,6 +204,33 @@ export function closeRadarPopout() {
     } catch (error) {
         console.warn("[VoiceRadar-Discord] could not close the radar window:", error);
     }
+}
+
+/** Minimizes instead while Discord still runs a main process half older than this option. */
+export async function hideRadarPopout() {
+    hiddenAway = true;
+
+    const hidden = await Native?.hideRadarWindow?.().catch(() => false);
+    if (!hidden) {
+        hiddenAway = false;
+        minimizeRadarPopout();
+        return;
+    }
+
+    if (hiddenAway) setShellAwake?.(false);
+}
+
+function showHiddenRadar() {
+    hiddenAway = false;
+    ReactDOM.flushSync(() => setShellAwake?.(true));
+
+    Native?.showRadarWindow?.().catch(error => console.warn("[VoiceRadar-Discord] could not show the radar window:", error));
+}
+
+/** The close button hides too, or the next press would build the window again. */
+function leaveRadarPopout() {
+    if (settings.store.hideOwnWindow && opensInOwnWindow()) void hideRadarPopout();
+    else closeRadarPopout();
 }
 
 /** Vencord adds plugin styles as style tags, and Discord carries only its stylesheet links into a popout. */
@@ -212,6 +256,16 @@ function mirrorTheme(target: Document): () => void {
 function PopoutShell() {
     const ref = useRef<HTMLElement>(null);
     const [styled, setStyled] = useState(false);
+    const [awake, setAwake] = useState(true);
+
+    useEffect(() => {
+        setShellAwake = setAwake;
+
+        return () => {
+            setShellAwake = null;
+            hiddenAway = false;
+        };
+    }, []);
 
     useLayoutEffect(() => {
         const own = ref.current?.ownerDocument;
@@ -219,7 +273,13 @@ function PopoutShell() {
         if (!own || own === document) return;
 
         copyStyles(own);
-        return mirrorTheme(own);
+        const stopSizing = sizePopout(own);
+        const stopMirroring = mirrorTheme(own);
+
+        return () => {
+            stopSizing();
+            stopMirroring();
+        };
     }, []);
 
     // Typing anywhere goes into the search, as it does in the window inside Discord.
@@ -242,7 +302,7 @@ function PopoutShell() {
 
     const radar = (
         <section ref={ref} className={cl("window") + " " + cl("window-popout")} style={styled ? undefined : { visibility: "hidden" }}>
-            {renderRadar?.(closeRadarPopout)}
+            {awake && renderRadar?.(leaveRadarPopout)}
         </section>
     );
 
@@ -276,6 +336,11 @@ function MenuWindow({ Context, view, children }: { Context: any; view: Window; c
 export function popOutRadar(render: (close: () => void) => ReactNode): boolean {
     renderRadar = render;
 
+    if (hiddenAway && isRadarPoppedOut()) {
+        showHiddenRadar();
+        return true;
+    }
+
     // Discord only focuses an open popout, and a minimised one has to come back first.
     if (isRadarPoppedOut() && read(() => PopoutWindowStore.getWindowVisible(POPOUT_KEY)) === false) {
         nativeWindow()?.restore?.(POPOUT_KEY);
@@ -285,7 +350,11 @@ export function popOutRadar(render: (close: () => void) => ReactNode): boolean {
         FluxDispatcher.dispatch({
             type: "POPOUT_WINDOW_OPEN",
             key: POPOUT_KEY,
-            features: { defaultWidth: DEFAULT_WIDTH, defaultHeight: DEFAULT_HEIGHT, defaultAlwaysOnTop: false },
+            features: {
+                defaultWidth: Math.round(DEFAULT_WIDTH * getPluginScale()),
+                defaultHeight: Math.round(DEFAULT_HEIGHT * getPluginScale()),
+                defaultAlwaysOnTop: false
+            },
             render: () => <ErrorBoundary noop><PopoutShell /></ErrorBoundary>
         } as any);
     } catch (error) {
@@ -372,26 +441,13 @@ export function confirmInPopout(options: ConfirmOptions): boolean {
     return true;
 }
 
-function HeadButton({ icon, label, active, onClick }: { icon: ReactNode; label: string; active?: boolean; onClick: () => void; }) {
-    return (
-        <Hint text={label}>
-            {hintProps => (
-                <button
-                    {...hintProps}
-                    className={cl("head-button") + (active ? " " + cl("head-button-on") : "")}
-                    aria-label={label}
-                    aria-pressed={active}
-                    onClick={onClick}
-                >
-                    {icon}
-                </button>
-            )}
-        </Hint>
-    );
-}
-
 export function PopOutButton({ onPopOut }: { onPopOut: () => void; }) {
-    return <HeadButton icon={<PopOutIcon />} label={T.popOut} onClick={onPopOut} />;
+    return (
+        <div className={cl("head-split")}>
+            <HeadButton icon={<PopOutIcon />} label={T.popOut} extraClass={cl("head-split-main")} onClick={onPopOut} />
+            <PopoutOptionsButton />
+        </div>
+    );
 }
 
 export function PopoutControls({ onPopIn }: { onPopIn: () => void; }) {
@@ -406,8 +462,10 @@ export function PopoutControls({ onPopIn }: { onPopIn: () => void; }) {
     return (
         <>
             <HeadButton icon={<OnTopIcon />} label={onTop ? T.popoutOnTopOn : T.popoutOnTop} active={onTop} onClick={toggleOnTop} />
-            <HeadButton icon={<MinimizeIcon />} label={T.popoutMinimize} onClick={minimizeRadarPopout} />
-            <HeadButton icon={<PopInIcon />} label={T.popIn} onClick={onPopIn} />
+            <div className={cl("head-split")}>
+                <HeadButton icon={<PopInIcon />} label={T.popIn} extraClass={cl("head-split-main")} onClick={onPopIn} />
+                <PopoutOptionsButton />
+            </div>
         </>
     );
 }

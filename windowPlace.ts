@@ -96,6 +96,7 @@ export function savedPlace(name: string): WindowPlace | null {
 }
 
 export function savePlace(name: string, place: WindowPlace | null) {
-    const { [name]: _old, ...others } = (settings.store.windowPlaces ?? {}) as Record<string, WindowPlace>;
+    // A plain copy, because a proxy from the store put back into it makes every later Vencord save fail.
+    const { [name]: _old, ...others } = JSON.parse(JSON.stringify(settings.store.windowPlaces ?? {})) as Record<string, WindowPlace>;
     settings.store.windowPlaces = place ? { ...others, [name]: place } : others;
 }

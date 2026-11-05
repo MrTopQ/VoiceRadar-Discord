@@ -1,8 +1,159 @@
 
 /* ── the list ───────────────────────────────────────────────────────────────────────────────── */
 
+/* The list and, beside it, whoever sits with you. */
+.vr-list-area {
+    display: flex;
+    flex: 1 1 auto;
+    min-height: 0;
+    container-type: inline-size;
+}
+
+.vr-with-you {
+    --vr-row-bg: var(--vr-raised);
+
+    display: flex;
+    flex: 0 0 330px;
+    flex-direction: column;
+    gap: 10px;
+    align-self: flex-start;
+    box-sizing: border-box;
+    min-width: 0;
+    max-height: calc(100% - 16px);
+    margin: 0 20px 16px 4px;
+    padding: 14px;
+    border: 1px solid color-mix(in srgb, var(--vr-brand) 35%, transparent);
+    border-radius: 12px;
+    background: var(--vr-raised);
+}
+
+/* A narrow window needs its whole width for the rows, which say who is with you anyway. */
+@container (max-width: 960px) {
+    .vr-with-you {
+        display: none;
+    }
+}
+
+.vr-platform-invisible {
+    color: var(--vr-text-muted);
+}
+
+.vr-with-you-title {
+    flex: 0 0 auto;
+    color: var(--vr-text-strong);
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.vr-with-you-people {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-height: 0;
+    margin: 0 -6px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.vr-with-you-person {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 6px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.vr-with-you-person:hover {
+    background: var(--vr-mod);
+}
+
+.vr-with-you .vr-avatar {
+    width: 36px;
+    height: 36px;
+}
+
+.vr-with-you .vr-status-dot {
+    width: 13px;
+    height: 13px;
+    border-width: 2px;
+}
+
+.vr-with-you-text {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.vr-with-you-line {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
+.vr-with-you-name,
+.vr-with-you-activity,
+.vr-with-you-place {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.vr-with-you-name {
+    color: var(--vr-text-strong);
+    font-size: 14.5px;
+    font-weight: 600;
+}
+
+.vr-with-you-activity {
+    color: var(--vr-text-muted);
+    font-size: 12.5px;
+}
+
+.vr-with-you-state {
+    display: flex;
+    flex: 0 0 auto;
+    gap: 3px;
+}
+
+/* Four buttons to a line, so somebody without moderator rights keeps a one line row. */
+.vr-with-you-buttons {
+    display: flex;
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 1px;
+    width: 111px;
+}
+
+.vr-with-you-group {
+    display: flex;
+    gap: 1px;
+}
+
+.vr-with-you .vr-action {
+    width: 27px;
+    height: 27px;
+    color: var(--vr-text-muted);
+}
+
+.vr-with-you .vr-action svg {
+    width: 17px;
+    height: 17px;
+}
+
+.vr-with-you-place {
+    flex: 0 0 auto;
+    color: var(--vr-text-muted);
+    font-size: 13px;
+}
+
 .vr-list {
     flex: 1 1 auto;
+    min-width: 0;
     min-height: 0;
     overflow-y: auto;
     overscroll-behavior: contain;
@@ -11,16 +162,19 @@
 }
 
 .vr-list::-webkit-scrollbar,
+.vr-with-you-people::-webkit-scrollbar,
 .vr-window-body::-webkit-scrollbar {
     width: 10px;
 }
 
 .vr-list::-webkit-scrollbar-track,
+.vr-with-you-people::-webkit-scrollbar-track,
 .vr-window-body::-webkit-scrollbar-track {
     background: transparent;
 }
 
 .vr-list::-webkit-scrollbar-thumb,
+.vr-with-you-people::-webkit-scrollbar-thumb,
 .vr-window-body::-webkit-scrollbar-thumb {
     border: 3px solid transparent;
     border-radius: 6px;

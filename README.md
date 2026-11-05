@@ -7,8 +7,19 @@ Vencord plugin. Remembers everyone you shared a voice channel with and shows whe
 - **List.** Everyone you met in voice, newest first, up to the limit (15 by default). Anything you
   switched on by hand keeps its slot: a pin, a bell, the auto-join target, the magnet, and people you
   added yourself.
-- **Two tabs.** Pinned and Recent, each with its own count plus a green one for who is in voice right
-  now. Pinned rows drag into any order.
+- **Three tabs.** Activity, Pinned and Recent. The two lists have their own count plus a green one for
+  who is in voice right now. Pinned rows drag into any order, Recent lists everybody, pinned people too.
+- **With you.** While you sit in a channel with others, a column beside the list shows them with their
+  game, mic and camera. A left click opens a profile, a right click Discord's menu. A button beside
+  each person mutes them just for you, and where you hold the rights three more do a server mute, a
+  server deafen and a disconnect, one request per click. Below those sit the pin, bell and auto-join
+  of a list row, plus the magnet where you may move them. The list scrolls past what fits, and a narrow
+  window leaves the column out and keeps the rows. Pinned rows stay in your order meanwhile, Recent
+  still brings these people to the top.
+- **Activity.** One live feed of everybody's journal lines, newest on top, with your own moves shown
+  once. Each row gives the exact second, the device, who sat in the channel and how many, the time
+  together and how long a stream ran. A switch narrows it to pinned people, the search and the voice
+  filter work here too. It only reads what the plugin already wrote down.
 - **Per row.** Channel, server, headcount, status, activity chip, mic, headphones, camera, when you
   last sat together, when they left voice, and one icon per device the person is online from. Times
   are exact, such as "left at 19:35", never rounded to "6 min ago". A right click opens Discord's own
@@ -96,11 +107,12 @@ settings, Plugins. Without git, download the ZIP into `src/userplugins/` by hand
 
 ## Settings
 
-Eighteen, in panel order. Vencord prints a longer description beside each.
+Twenty-three, in panel order. Vencord prints a longer description beside each.
 
 | Setting | Control | Default | What it does |
 |---|---|---|---|
 | Language | dropdown | Auto | Auto (follow Discord), English, Русский |
+| Plugin size | slider, 100 to 150 | 100 | Windows, hints and menus, in percent of their original size. The button in the radar's title opens the same slider in a small floating panel, with the window changing behind it as you drag |
 | People the list keeps | slider, 5 to 200 | 15 | Pinned people take slots too |
 | Hotkey | text | `Alt+2` | Opens and closes the window |
 | Mute mic on auto-join | switch | off | Mutes your mic on every join the plugin makes |
@@ -116,8 +128,10 @@ Eighteen, in panel order. Vencord prints a longer description beside each.
 | Servers watched for voice | slider, 10 to 200 | 100 | Discord only sends voice states for subscribed servers, so joins past this number go unseen. Your people's servers come first, and the window says how many did not fit |
 | Keep timers awake | switch | on | Holds Discord's timers at normal pace in the background, so a join reaches you in seconds instead of minutes |
 | Group move speed | dropdown | Fast | Careful sends one move at a time, Fast four, Instant eight. Every move is a line in the server's audit log |
-| Moderator mode | switch | on | Adds pull, undo and magnet where you hold the permission |
+| Moderator mode | switch | on | Adds pull, undo, magnet and the server buttons beside the people with you, where you hold the permission |
 | Lookup site | text | discord-sensor.com/members/{id} | The info window's button, {id} becomes the person's ID, empty removes it |
+| Open in own window | switch | off | The hotkey and the panel button open and close the radar in its separate window instead of inside Discord. The narrow gear beside the window button in the title flips the same switch |
+| Hide own window | switch | off | With the option above on, the hotkey, the panel button and the close button hide the separate window, off the screen and the taskbar, and it comes back at once. It stays in memory the whole time. The same gear flips this too. Needs a full restart |
 | Panel button | switch | on | Goes away at once, needs a restart to come back |
 | Hotkey system wide | switch | off | The hotkey fires while Discord sits in the background and brings it up. Needs a full restart |
 

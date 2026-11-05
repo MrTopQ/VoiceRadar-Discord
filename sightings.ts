@@ -49,6 +49,8 @@ export interface Sighting {
     with?: string[];
     /** How many others there were, only when more than the ones named. */
     withCount?: number;
+    /** What the person and then each of the named others were on, as deviceNote writes it. Missing on older lines and when nothing is known. */
+    devices?: string[];
     /** It happened at some moment after this and before at, which is all that is known. */
     after?: number;
     /** Found right after the plugin started watching again, after Discord was closed or offline. */
@@ -169,6 +171,14 @@ export async function loadSightings(): Promise<void> {
     }
 }
 
+const listeners = new Set<() => void>();
+
+/** Calls back on every new line, and returns how to stop listening. */
+export function subscribeToSightings(listener: () => void): () => void {
+    listeners.add(listener);
+    return () => void listeners.delete(listener);
+}
+
 export function recordSighting(userId: string, sighting: Omit<Sighting, "at"> & { at?: number; }) {
     const line: Sighting = { ...sighting, at: sighting.at ?? Date.now() };
     const lines = log.get(userId) ?? [];
@@ -176,6 +186,12 @@ export function recordSighting(userId: string, sighting: Omit<Sighting, "at"> & 
     log.set(userId, [...lines, line].slice(-MAX_SIGHTINGS_PER_PERSON));
     dirty.add(userId);
     scheduleSave();
+
+    for (const listener of listeners) listener();
+}
+
+export function allSightings(): [string, Sighting[]][] {
+    return [...log];
 }
 
 export function getSightings(userId: string): Sighting[] {

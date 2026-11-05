@@ -159,6 +159,24 @@ export function SpeakerIcon({ size = 16, className }: IconProps) {
     );
 }
 
+export function SizeIcon({ size = 18, className }: IconProps) {
+    return (
+        <svg {...base(size)} className={className}>
+            <path d="m2.5 18.5 6-14 6 14M4.7 14h7.6" {...stroke} />
+            <path d="m15 18.5 3.5-8 3.5 8M16.2 16h4.6" {...stroke} />
+        </svg>
+    );
+}
+
+export function SpeakerOffIcon({ size = 16, className }: IconProps) {
+    return (
+        <svg {...base(size)} className={className}>
+            <path d="M2.5 9h3.8l5.2-4.5v15L6.3 15H2.5V9Z" fill="currentColor" />
+            <path d="m15.5 9 5.5 6M21 9l-5.5 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+    );
+}
+
 export function LockedSpeakerIcon({ size = 16, className }: IconProps) {
     return (
         <svg {...base(size)} className={className}>
@@ -307,14 +325,6 @@ export function PopInIcon({ size = 18, className }: IconProps) {
         <svg {...base(size)} className={className}>
             <path d="M20 4l-8 8M12 7v5h5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             <path d="M10 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-        </svg>
-    );
-}
-
-export function MinimizeIcon({ size = 18, className }: IconProps) {
-    return (
-        <svg {...base(size)} className={className}>
-            <path d="M6 12h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
         </svg>
     );
 }
@@ -533,6 +543,15 @@ export function LeaveIcon({ size = 16, className }: IconProps) {
     return (
         <svg {...base(size)} className={className}>
             <path d="M11 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h5M10 12h10M16.5 8.2l3.5 3.8-3.5 3.8" {...stroke} />
+        </svg>
+    );
+}
+
+export function InvisibleIcon({ size = 16, className }: IconProps) {
+    return (
+        <svg {...base(size)} className={className}>
+            <path d="M9.9 5.2A9.5 9.5 0 0 1 12 5c5.5 0 9 5.2 9.5 7-.2.8-1 2.1-2.2 3.4M6.3 6.8C3.9 8.3 2.8 10.7 2.5 12c.5 1.8 4 7 9.5 7 1.9 0 3.5-.6 4.9-1.5" {...stroke} />
+            <path d="M10 10a3 3 0 0 0 4.1 4.1M3.5 3.5l17 17" {...stroke} />
         </svg>
     );
 }

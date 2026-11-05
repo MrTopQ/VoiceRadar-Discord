@@ -24,24 +24,29 @@ import { getVoiceInfo } from "../channels";
 import { subscribeToSubscriptionProgress } from "../guildSubscriptions";
 import { isHotkeyCaptureActive } from "../hotkey";
 import { T } from "../i18n";
+import { inTabOrder, recentTabUsers } from "../listOrder";
 import { needsFullRestart } from "../mainProcess";
 import { getSearchText, normalizeSearch, warmUpUsers } from "../names";
 import { requestPresences } from "../presence";
 import { subscribeToQueue } from "../queue";
+import { radarPress } from "../radarPress";
 import { askToRestartDiscord } from "../restart";
-import { getHistoryLimit } from "../settings";
-import { getVisibleUsers, pinnedPositionOf, refreshLimit, reorderPinned, subscribeToStore, TrackedUser } from "../store";
+import { getHistoryLimit, settings } from "../settings";
+import { getTrackedUser, getVisibleUsers, pinnedPositionOf, refreshLimit, reorderPinned, subscribeToStore, TrackedUser } from "../store";
 import { throttle } from "../throttle";
 import { toast, ToastType } from "../toast";
 import { sweepCurrentChannel } from "../tracker";
+import { ActivityFilterChoice, ActivityList, useActivityFilter } from "./ActivityList";
 import { cl } from "./common";
 import { RadarIcon } from "./icons";
 import { EverywhereToggle, FollowCard, Footer, isLiveOnly, isSearchingEverywhere, LiveFilter, PendingChips, SearchBox, type Tab, Tabs } from "./RadarControls";
 import { Header, readState, WINDOW_LABEL } from "./RadarHeader";
-import { canPopOut, closeRadarPopout, isRadarPopoutFocused, isRadarPoppedOut, minimizeRadarPopout, PopOutButton, PopoutControls, popOutRadar } from "./RadarPopout";
+import { canPopOut, closeRadarPopout, hideRadarPopout, isRadarPopoutFocused, isRadarPopoutShown, isRadarPoppedOut, minimizeRadarPopout, opensInOwnWindow, PopOutButton, PopoutControls, popOutRadar } from "./RadarPopout";
+import { SizeButton } from "./SizePanel";
 import { type DragHandlers, getMemoUserRow, rowSharedKey, rowSignature } from "./UserRow";
 import { VoiceSearchResults } from "./VoiceSearchResults";
 import { closeWindow, isWindowOpen, openWindow } from "./Window";
+import { WithYou } from "./WithYou";
 
 const LIVE_REFRESH_MS = 15000;
 const REDRAW_THROTTLE_MS = 400;
@@ -52,16 +57,9 @@ let lastTab: Tab | null = null;
 
 const countLive = (users: TrackedUser[]) => users.filter(user => getVoiceInfo(user.id)).length;
 
-function withMeFirst(users: TrackedUser[]): TrackedUser[] {
-    const withMe: TrackedUser[] = [];
-    const rest: TrackedUser[] = [];
+const isWithMe = (userId: string) => getVoiceInfo(userId)?.isMyChannel === true;
 
-    for (const user of users) {
-        (getVoiceInfo(user.id)?.isMyChannel ? withMe : rest).push(user);
-    }
-
-    return withMe.length ? [...withMe, ...rest] : users;
-}
+type ListTab = Exclude<Tab, "activity">;
 
 /** Long lists are drawn a batch per frame, so opening never stalls. */
 function useRowsToDraw(total: number, tab: Tab): number {
@@ -109,15 +107,17 @@ function usePinnedDrag(onChanged: () => void): DragHandlers {
     };
 }
 
+const popRadarWindow = () => popOutRadar(close => <RadarWindow onClose={close} popout />);
+
 function popRadarOut() {
     closeRadarModal();
-    popOutRadar(close => <RadarWindow onClose={close} popout />);
+    popRadarWindow();
 }
 
 function popRadarBackIn() {
     closeRadarPopout();
-    // After Discord has let go of the popout, so the hotkey does not just bring it forward again.
-    setTimeout(openRadarModal, 0);
+    // After Discord has let go of the popout, so it does not just come forward again.
+    setTimeout(openInDiscord, 0);
 }
 
 function RadarWindow({ onClose, embedded = false, popout = false }: { onClose: () => void; embedded?: boolean; popout?: boolean; }) {
@@ -125,6 +125,7 @@ function RadarWindow({ onClose, embedded = false, popout = false }: { onClose: (
     const [query, setQuery] = useState("");
     const [tab, setTab] = useState<Tab>(() =>
         lastTab ?? (getVisibleUsers().pinned.length ? "pinned" : "recent"));
+    const [activityFilter, setActivityFilter] = useActivityFilter();
 
     const openTab = (next: Tab) => {
         lastTab = next;
@@ -132,15 +133,16 @@ function RadarWindow({ onClose, embedded = false, popout = false }: { onClose: (
     };
 
     /** The order is frozen while the window is open, so rows do not jump under the cursor. */
-    const frozenOrder = useRef<Map<string, number> | null>(null);
+    const frozenOrder = useRef<Record<ListTab, Map<string, number>> | null>(null);
 
     const snapshotOrder = () => {
         const { pinned, recent } = getVisibleUsers();
-        frozenOrder.current = new Map([...pinned, ...recent].map((user, index) => [user.id, index]));
+        const positions = (users: TrackedUser[]) => new Map(users.map((user, index) => [user.id, index]));
+        frozenOrder.current = { pinned: positions(pinned), recent: positions(recentTabUsers(pinned, recent)) };
     };
 
-    const applyFrozenOrder = (list: TrackedUser[]) => {
-        const order = frozenOrder.current;
+    const applyFrozenOrder = (list: TrackedUser[], listTab: ListTab) => {
+        const order = frozenOrder.current?.[listTab];
         if (!order) return list;
         return [...list].sort((a, b) => (order.get(a.id) ?? -1) - (order.get(b.id) ?? -1));
     };
@@ -208,17 +210,25 @@ function RadarWindow({ onClose, embedded = false, popout = false }: { onClose: (
     };
 
     const pinnedMatching = filter(pinned);
-    const recentMatching = filter(recent);
+    const recentMatching = filter(recentTabUsers(pinned, recent));
 
     // Counted before the live filter, so the counts describe the whole tab.
     const livePinned = countLive(pinnedMatching);
     const liveRecent = countLive(recentMatching);
-    const live = livePinned + liveRecent;
+    const live = liveRecent;
 
     const inVoiceOnly = (users: TrackedUser[]) =>
         (isLiveOnly() ? users.filter(user => getVoiceInfo(user.id)) : users);
 
-    const shownList = withMeFirst(applyFrozenOrder(inVoiceOnly(tab === "pinned" ? pinnedMatching : recentMatching)));
+    const listTab: ListTab = tab === "pinned" ? "pinned" : "recent";
+    const shownList = inTabOrder(applyFrozenOrder(inVoiceOnly(listTab === "pinned" ? pinnedMatching : recentMatching), listTab), listTab, isWithMe);
+
+    /** The search and the voice filter stay on the activity tab too. */
+    const matchesControls = (userId: string) => {
+        const normalized = normalizeSearch(query.trim());
+        const found = !normalized || getSearchText(userId, getTrackedUser(userId)?.name ?? "").includes(normalized);
+        return found && (!isLiveOnly() || getVoiceInfo(userId) != null);
+    };
     const rowsToDraw = useRowsToDraw(shownList.length, tab);
     const Row = getMemoUserRow();
     const sharedKey = rowSharedKey();
@@ -233,9 +243,14 @@ function RadarWindow({ onClose, embedded = false, popout = false }: { onClose: (
                 people={total}
                 live={live}
                 embedded={embedded}
-                controls={popout
-                    ? <PopoutControls onPopIn={popRadarBackIn} />
-                    : !embedded && canPopOut() && <PopOutButton onPopOut={popRadarOut} />}
+                controls={
+                    <>
+                        {!embedded && <SizeButton />}
+                        {popout
+                            ? <PopoutControls onPopIn={popRadarBackIn} />
+                            : !embedded && canPopOut() && <PopOutButton onPopOut={popRadarOut} />}
+                    </>
+                }
                 onClose={onClose}
             />
 
@@ -247,7 +262,7 @@ function RadarWindow({ onClose, embedded = false, popout = false }: { onClose: (
                     recent={{ total: recentMatching.length, live: liveRecent }}
                 />
                 <SearchBox query={query} setQuery={setQuery} />
-                <EverywhereToggle onChanged={forceUpdate} />
+                {tab !== "activity" && <EverywhereToggle onChanged={forceUpdate} />}
                 <LiveFilter onChanged={forceUpdate} />
                 <PendingChips onChanged={forceUpdate} />
             </div>
@@ -275,39 +290,45 @@ function RadarWindow({ onClose, embedded = false, popout = false }: { onClose: (
                 <div className={cl("warning")}>{T.warnOverLimit(total, limit, freeSlots)}</div>
             )}
 
-            {!isEmpty && (
-                <div className={cl("list-hint")}>
-                    {tab === "pinned"
-                        ? T.sectionPinnedHint(pinned.length, limit)
-                        : T.sectionRecentHint(freeSlots)}
-                </div>
-            )}
-
-            <div className={cl("list")}>
-                {isEmpty ? (
-                    <div className={cl("empty")}>
-                        <div className={cl("empty-icon")}><RadarIcon size={34} /></div>
-                        <div className={cl("empty-title")}>{T.emptyTitle}</div>
-                        <div className={cl("empty-hint")}>{T.emptyHint}</div>
-                    </div>
-                ) : shownList.length ? (
-                    shownList.slice(0, rowsToDraw).map(user => (
-                        <Row
-                            key={user.id}
-                            user={user}
-                            signature={rowSignature(user, sharedKey)}
-                            drag={tab === "pinned" ? pinnedDrag : undefined}
-                        />
-                    ))
-                ) : (
-                    <div className={cl("empty-tab")}>
-                        {isLiveOnly() ? T.tabEmptyLive : T.tabEmpty}
+            {tab === "activity"
+                ? <ActivityFilterChoice filter={activityFilter} onChoose={setActivityFilter} />
+                : !isEmpty && (
+                    <div className={cl("list-hint")}>
+                        {tab === "pinned"
+                            ? T.sectionPinnedHint(pinned.length, limit)
+                            : T.sectionRecentHint(freeSlots)}
                     </div>
                 )}
 
-                {isSearchingEverywhere() && query.trim() && (
-                    <VoiceSearchResults query={query} shownIds={new Set(shownList.map(user => user.id))} onChanged={forceUpdate} />
-                )}
+            <div className={cl("list-area")}>
+                {tab === "activity" ? <ActivityList filter={activityFilter} matches={matchesControls} /> : <div className={cl("list")}>
+                    {isEmpty ? (
+                        <div className={cl("empty")}>
+                            <div className={cl("empty-icon")}><RadarIcon size={34} /></div>
+                            <div className={cl("empty-title")}>{T.emptyTitle}</div>
+                            <div className={cl("empty-hint")}>{T.emptyHint}</div>
+                        </div>
+                    ) : shownList.length ? (
+                        shownList.slice(0, rowsToDraw).map(user => (
+                            <Row
+                                key={user.id}
+                                user={user}
+                                signature={rowSignature(user, sharedKey)}
+                                drag={tab === "pinned" ? pinnedDrag : undefined}
+                            />
+                        ))
+                    ) : (
+                        <div className={cl("empty-tab")}>
+                            {isLiveOnly() ? T.tabEmptyLive : T.tabEmpty}
+                        </div>
+                    )}
+
+                    {isSearchingEverywhere() && query.trim() && (
+                        <VoiceSearchResults query={query} shownIds={new Set(shownList.map(user => user.id))} onChanged={forceUpdate} />
+                    )}
+                </div>}
+
+                <WithYou />
             </div>
 
             <Footer pinned={pinned.length} recent={recent.length} total={total} limit={limit} onChanged={forceUpdate} />
@@ -319,22 +340,59 @@ const RADAR_WINDOW = "radar";
 
 /** The system wide hotkey, which leaves Discord's main window alone while the radar has a window of its own. */
 export function toggleRadarFromHotkey(): boolean | undefined {
+    if (opensInOwnWindow()) {
+        openRadarModal();
+        return undefined;
+    }
+
     if (!isRadarPoppedOut()) return openRadarModal();
 
     if (isRadarPopoutFocused()) minimizeRadarPopout();
-    else popOutRadar(close => <RadarWindow onClose={close} popout />);
+    else popRadarWindow();
 
     return undefined;
 }
 
 export function openRadarModal(): boolean {
-    if (isRadarPoppedOut()) return popOutRadar(close => <RadarWindow onClose={close} popout />);
+    const press = radarPress({
+        direct: opensInOwnWindow(),
+        hide: !!settings.store.hideOwnWindow,
+        inDiscord: isWindowOpen(RADAR_WINDOW),
+        ownWindow: isRadarPoppedOut(),
+        ownWindowShown: isRadarPopoutShown()
+    });
 
-    if (isWindowOpen(RADAR_WINDOW)) {
-        closeWindow(RADAR_WINDOW, { animate: true });
-        return false;
+    switch (press) {
+        case "close-in-discord":
+            closeWindow(RADAR_WINDOW, { animate: true });
+            return false;
+        case "close-own-window":
+            closeRadarPopout();
+            return false;
+        case "hide-own-window":
+            void hideRadarPopout();
+            return false;
+        case "show-own-window":
+            return showOwnWindow();
+        case "open-in-discord":
+            return openInDiscord();
     }
+}
 
+/** For menus, where opening must not close a radar that is already up. */
+export function showRadar() {
+    if (isRadarPopoutShown()) popRadarWindow();
+    else openRadarModal();
+}
+
+function showOwnWindow(): boolean {
+    refreshLimit();
+    sweepCurrentChannel();
+
+    return popRadarWindow() || openInDiscord();
+}
+
+function openInDiscord(): boolean {
     refreshLimit();
     sweepCurrentChannel();
 

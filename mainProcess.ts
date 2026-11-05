@@ -23,6 +23,8 @@ import { PLUGIN_NAME } from "./i18n";
 /** Everything native.ts exports, so a helper left over from an older version counts as missing too. */
 export const MAIN_PROCESS_METHODS = [
     "revealWindow",
+    "hideRadarWindow",
+    "showRadarWindow",
     "registerGlobalHotkey",
     "setBackgroundThrottling",
     "unregisterGlobalHotkey",

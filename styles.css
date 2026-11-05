@@ -38,6 +38,17 @@
     --vr-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
+/* Everything drawn over Discord, at the size chosen in the settings. */
+.vr-root,
+.vr-hint,
+.vr-cards,
+.vr-menu-host,
+.vr-confirm-host,
+.vr-toast-host,
+.vr-window.vr-window-popout {
+    zoom: var(--vr-scale, 1);
+}
+
 /* ── the window ─────────────────────────────────────────────────────────────────────────────── */
 
 /* Between Discord's app and its layers, so Discord's own windows still open above. */
@@ -329,6 +340,31 @@
     color: var(--vr-brand-text);
 }
 
+/* One button in two halves, as in a row, the options of the window in the narrow one. */
+.vr-head-split {
+    flex: 0 0 auto;
+    display: flex;
+    border-radius: 10px;
+    transition: background-color 0.12s ease;
+}
+
+.vr-head-split:hover {
+    background: var(--vr-mod);
+}
+
+.vr-head-button.vr-head-split-main {
+    border-radius: 10px 0 0 10px;
+}
+
+.vr-head-button.vr-head-split-more {
+    width: 22px;
+    border-radius: 0 10px 10px 0;
+}
+
+.vr-head-split:hover .vr-head-split-more {
+    box-shadow: inset 1px 0 0 var(--vr-border-strong);
+}
+
 /* The radar in a Discord window of its own, which has no frame, so the title bar drags it. */
 .vr-window.vr-window-popout {
     position: fixed;
@@ -492,6 +528,193 @@
     box-shadow: var(--vr-shadow);
     pointer-events: auto;
     animation: vr-hint-in 0.12s var(--vr-ease) both;
+}
+
+.vr-menu.vr-option-panel {
+    gap: 16px;
+    box-sizing: border-box;
+    width: 340px;
+    max-width: none;
+    padding: 14px 16px;
+}
+
+.vr-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    cursor: pointer;
+}
+
+.vr-option.vr-option-off {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.vr-option-text {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.vr-option-title {
+    color: var(--vr-text-strong);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.vr-option-hint {
+    color: var(--vr-text-muted);
+    font-size: 12.5px;
+    line-height: 1.35;
+}
+
+.vr-switch {
+    position: relative;
+    flex: 0 0 auto;
+    width: 40px;
+    height: 24px;
+    margin: 0;
+    border-radius: 12px;
+    background: var(--vr-mod-strong);
+    cursor: pointer;
+    appearance: none;
+    transition: background-color 0.12s ease;
+}
+
+.vr-switch::before {
+    content: "";
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #fff;
+    transition: transform 0.12s ease;
+}
+
+.vr-switch:disabled {
+    cursor: not-allowed;
+}
+
+.vr-switch:checked {
+    background: var(--vr-brand);
+}
+
+.vr-switch:checked::before {
+    transform: translateX(16px);
+}
+
+.vr-switch:focus-visible {
+    outline: 2px solid var(--vr-brand);
+    outline-offset: 2px;
+}
+
+/* Keeps its size while the plugin changes around it. */
+.vr-menu-host.vr-menu-host-fixed {
+    zoom: 1;
+}
+
+.vr-menu.vr-size-panel {
+    gap: 14px;
+    box-sizing: border-box;
+    width: 320px;
+    max-width: none;
+    padding: 14px 16px;
+}
+
+.vr-size-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+}
+
+.vr-size-title {
+    color: var(--vr-text-strong);
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.vr-size-value {
+    color: var(--vr-brand-text);
+    font-size: 18px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+
+.vr-size-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.vr-size-step {
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: none;
+    border-radius: 8px;
+    background: var(--vr-mod-strong);
+    color: var(--vr-text-strong);
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+    transition: background-color 0.12s ease, transform 0.08s ease;
+}
+
+.vr-size-step:hover:not(:disabled) {
+    background: var(--vr-brand);
+    color: #fff;
+}
+
+.vr-size-step:active:not(:disabled) {
+    transform: scale(0.9);
+}
+
+.vr-size-step:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.vr-size-slider {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 6px;
+    margin: 0;
+    border-radius: 3px;
+    background: linear-gradient(to right, var(--vr-brand) var(--vr-size-filled), var(--vr-mod-strong) var(--vr-size-filled));
+    cursor: pointer;
+    appearance: none;
+}
+
+.vr-size-slider::-webkit-slider-thumb {
+    width: 18px;
+    height: 18px;
+    border: 3px solid var(--vr-brand);
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 4px rgb(0 0 0 / 40%);
+    appearance: none;
+}
+
+.vr-size-slider:focus-visible {
+    outline: 2px solid var(--vr-brand);
+    outline-offset: 4px;
+}
+
+.vr-chip.vr-size-reset {
+    align-self: flex-end;
+}
+
+.vr-chip.vr-size-reset:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
 }
 
 .vr-menu-item {
@@ -1135,6 +1358,11 @@
     animation: vr-hint-in 0.09s ease-out both;
 }
 
+/* Only says something, so the pointer goes straight through to what lies under it. */
+.vr-hint.vr-hint-plain {
+    pointer-events: none;
+}
+
 .vr-hint::after {
     content: "";
     position: absolute;
@@ -1213,6 +1441,12 @@
     padding: 1px 5px;
     border-radius: 6px;
     cursor: pointer;
+}
+
+.vr-person-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .vr-person:hover {

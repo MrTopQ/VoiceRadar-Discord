@@ -22,7 +22,7 @@ import type { PointerEvent as ReactPointerEvent, ReactNode } from "react";
 
 import { isTypingKey } from "../hotkey";
 import { type Edge, EDGES, fitPlace, movePlace, resizePlace, savedPlace, savePlace, type Size, type WindowPlace } from "../windowPlace";
-import { asElement, takesText } from "./dom";
+import { asElement, takesText, zoomOf } from "./dom";
 
 const cl = classNameFactory("vr-");
 
@@ -79,6 +79,7 @@ interface GestureStart {
     pointerId: number;
     x: number;
     y: number;
+    zoom: number;
     place: WindowPlace;
     size: Size;
     area: Size;
@@ -175,6 +176,7 @@ function usePlace(placeKey: string | undefined, windowRef: { current: HTMLElemen
             pointerId: event.pointerId,
             x: event.clientX,
             y: event.clientY,
+            zoom: zoomOf(measured.box),
             place: fitPlace(place ?? { x: 0, y: 0 }, measured.size, measured.area),
             size: measured.size,
             area: measured.area
@@ -187,8 +189,9 @@ function usePlace(placeKey: string | undefined, windowRef: { current: HTMLElemen
         const begun = start.current;
         if (!begun || event.pointerId !== begun.pointerId) return;
 
-        const dx = event.clientX - begun.x;
-        const dy = event.clientY - begun.y;
+        // The pointer moves in screen pixels, the window in its own scaled ones.
+        const dx = (event.clientX - begun.x) / begun.zoom;
+        const dy = (event.clientY - begun.y) / begun.zoom;
         const next = begun.gesture === "move"
             ? movePlace(begun.place, dx, dy)
             : resizePlace(begun.place, begun.size, begun.gesture, dx, dy, begun.area);

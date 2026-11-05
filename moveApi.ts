@@ -27,11 +27,13 @@ import { moveAccessForChannel } from "./movePermissions";
 interface MoveContext {
     fromChannelId?: string | null;
     toChannelId?: string | null;
+    /** What to say when Discord refuses something other than a move. */
+    refusal?: string;
 }
 
 const channelNameOf = (channelId: string) => getChannelName(ChannelStore.getChannel(channelId));
 
-function describeForbidden(name: string, { fromChannelId, toChannelId }: MoveContext, discordMessage?: string): string {
+function describeForbidden(name: string, { fromChannelId, toChannelId, refusal }: MoveContext, discordMessage?: string): string {
     if (toChannelId && moveAccessForChannel(toChannelId) === "no") {
         return T.refusalCannotMoveInto(name, channelNameOf(toChannelId));
     }
@@ -41,6 +43,7 @@ function describeForbidden(name: string, { fromChannelId, toChannelId }: MoveCon
     }
 
     if (discordMessage) return T.refusalWithMessage(name, discordMessage);
+    if (refusal) return refusal;
 
     return toChannelId ? T.refusalTargetCannotJoin(name) : T.refusalForbidden(name);
 }
@@ -57,7 +60,7 @@ function describeRefusal(error: any, name: string, context: MoveContext): string
     if (status === 429) return T.refusalRateLimited;
 
     const message = error?.body?.message;
-    return message ? T.refusalWithMessage(name, message) : T.refusalGeneric(name);
+    return message ? T.refusalWithMessage(name, message) : context.refusal ?? T.refusalGeneric(name);
 }
 
 function isForbidden(error: any): boolean {
@@ -113,15 +116,24 @@ async function patchMember(guildId: string, userId: string, body: Record<string,
     }
 }
 
-export async function moveMember(guildId: string, userId: string, toChannelId: string, name: string, fromChannelId?: string | null): Promise<MoveOutcome> {
-    const body = { channel_id: toChannelId };
-    const context: MoveContext = { fromChannelId, toChannelId };
-
+/** A rate limit is waited out once and never more. */
+async function patchPatiently(guildId: string, userId: string, body: Record<string, unknown>, name: string, context: MoveContext): Promise<MoveOutcome> {
     const attempt = await patchMember(guildId, userId, body, name, context);
     if (attempt.ok || !attempt.retryAfterMs) return attempt;
 
     await sleep(attempt.retryAfterMs);
     return patchMember(guildId, userId, body, name, context);
+}
+
+export function moveMember(guildId: string, userId: string, toChannelId: string, name: string, fromChannelId?: string | null): Promise<MoveOutcome> {
+    return patchPatiently(guildId, userId, { channel_id: toChannelId }, name, { fromChannelId, toChannelId });
+}
+
+export type VoiceChange = { mute: boolean; } | { deaf: boolean; } | { channel_id: null; };
+
+/** One request per click, nothing here ever repeats a change on its own. */
+export function changeMemberVoice(guildId: string, userId: string, change: VoiceChange, name: string): Promise<MoveOutcome> {
+    return patchPatiently(guildId, userId, change, name, { refusal: T.refusalVoiceAction });
 }
 
 let batchRunning = false;

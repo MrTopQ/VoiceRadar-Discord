@@ -16,16 +16,14 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-import { Parser, React, useEffect, UserStore, useState } from "@webpack/common";
+import { Parser, React, UserStore } from "@webpack/common";
 import type { ComponentType, ReactNode } from "react";
 
-import { describeAutoJoinPace, toggleAutoJoinFor, toggleMagnetFor } from "../actions";
 import { TtlCache } from "../cache";
 import { getChannelParticipantIds, getMyChannelId, getMyGuildId, getVoiceInfo, type VoiceInfo } from "../channels";
 import { spotlightChannel } from "../channelSpotlight";
 import { T } from "../i18n";
 import { joinVoiceChannel } from "../join";
-import { GIVE_UP_COOLDOWN_MS, MAX_RETURNS_PER_MINUTE } from "../magnet";
 import { canOpenModViewEverywhere, isModeratorIn } from "../modView";
 import { getReturnableBatch, getReturnChannel, sendBatchBack, sendUserBack } from "../moveHistory";
 import { canShowMagnet, getMoveAccess } from "../movePermissions";
@@ -35,8 +33,7 @@ import { canMoveGroupTo, moveGroupTo, pullableUsers, pullTheirChannelToMe, pullT
 import { cancelQueue, isQueuedFor, queueForChannel } from "../queue";
 import { getRecentMarkMs, settings } from "../settings";
 import { getLastLeave, getRecentChange, lastSeenTogether } from "../sightings";
-import { isSpeaking, watchSpeaking } from "../speaking";
-import { removeUser, toggleNotify, togglePin, type TrackedUser } from "../store";
+import { removeUser, type TrackedUser } from "../store";
 import { getStreamFor } from "../streams";
 import { formatMoment } from "../time";
 import { toast, ToastType } from "../toast";
@@ -44,7 +41,6 @@ import { openUserMenu } from "../userMenu";
 import { ActionButton, cl, PlatformIcons, StatusDot } from "./common";
 import { Hint } from "./Hint";
 import {
-    BellIcon,
     CameraIcon,
     ChevronDownIcon,
     ClockIcon,
@@ -53,21 +49,19 @@ import {
     JoinIcon,
     LockedSpeakerIcon,
     LockIcon,
-    MagnetIcon,
     MicOffIcon,
-    PinIcon,
     PullIcon,
     ReturnIcon,
     ShieldIcon,
     SpeakerIcon,
-    TargetIcon,
     TrashIcon
 } from "./icons";
 import { openModViewServerMenu, showModViewForPerson } from "./ModViewMenu";
+import { AutoJoinButton, MagnetButton, NotifyButton, PinButton } from "./PersonButtons";
 import { openPersonInfo } from "./PersonInfoModal";
 import { type MenuChoice, type MenuPerson, openPopoverMenu } from "./PopoverMenu";
 import { StreamIndicator } from "./StreamPreview";
-import { PeopleRows } from "./VoicePeople";
+import { PeopleRows, SpeakingAvatar } from "./VoicePeople";
 import { closeAllWindows } from "./Window";
 
 const TOOLTIP_MAX_MEMBERS = 10;
@@ -137,7 +131,7 @@ export function ChannelChip({ voice }: { voice: VoiceInfo; }) {
     };
 
     return (
-        <Hint text={<ChannelTooltip voice={voice} />}>
+        <Hint interactive text={<ChannelTooltip voice={voice} />}>
             {hintProps => (
                 <span
                     {...hintProps}
@@ -170,18 +164,6 @@ function NotInVoice({ user }: { user: TrackedUser; }) {
                 : <>{T.notInVoice}{user.lastChannelName && T.lastChannel(user.lastChannelName)}</>}
         </span>
     );
-}
-
-function SpeakingAvatar({ userId, src, alt }: { userId: string; src: string; alt: string; }) {
-    const [speaking, setSpeaking] = useState(() => isSpeaking(userId));
-
-    useEffect(() => {
-        const update = () => setSpeaking(isSpeaking(userId));
-        update();
-        return watchSpeaking(update);
-    }, [userId]);
-
-    return <img className={cl("avatar") + (speaking ? " " + cl("avatar-speaking") : "")} src={src} alt={alt} />;
 }
 
 export interface DragHandlers {
@@ -405,19 +387,6 @@ export function UserRow({ user, drag }: UserRowProps) {
     const canMove = moveAccess !== "no";
     const uncheckedNote = moveAccess === "unknown" ? T.permissionUnchecked : "";
     const returnTo = canMove ? getReturnChannel(user.id) : null;
-    const showMagnet = canShowMagnet(user.id);
-
-    const magnetTooltip = !user.autoPull
-        ? T.magnetOff
-        : !getMyChannelId()
-            ? T.magnetIdleNotConnected
-            : !voice
-                ? T.magnetIdleTargetOffline
-                : voice.guildId !== getMyGuildId()
-                    ? T.magnetIdleOtherGuild
-                    : moveAccess === "no"
-                        ? T.magnetIdleNoPermission
-                        : T.magnetActive;
 
     const queuedChannelId = voice?.channelId ?? user.lastChannelId;
     const queued = queuedChannelId != null && isQueuedFor(queuedChannelId);
@@ -453,8 +422,7 @@ export function UserRow({ user, drag }: UserRowProps) {
     };
 
     // user.name, not the display name, because a translated placeholder must not be saved.
-    const handleMagnet = () => toggleMagnetFor(user.id, user.name);
-    const handleAutoJoin = () => toggleAutoJoinFor(user.id, user.name);
+    const buttonProps = { userId: user.id, storedName: user.name, tracked: user };
 
     const openThisProfile = () => openProfile(user.id);
 
@@ -534,37 +502,13 @@ export function UserRow({ user, drag }: UserRowProps) {
                         ? <ReturnSplit userId={user.id} channelName={returnTo.name} note={uncheckedNote} />
                         : <PullSplit userId={user.id} voice={voice} note={uncheckedNote} />
                     )}
-                    {showMagnet && (
-                        <ActionButton
-                            icon={<MagnetIcon />}
-                            tooltip={magnetTooltip + uncheckedNote}
-                            note={T.magnetLimit(MAX_RETURNS_PER_MINUTE, GIVE_UP_COOLDOWN_MS / 1000)}
-                            active={user.autoPull}
-                            onClick={handleMagnet}
-                        />
-                    )}
+                    <MagnetButton {...buttonProps} />
                 </div>
 
                 <div className={cl("action-group")}>
-                    <ActionButton
-                        icon={<PinIcon />}
-                        tooltip={user.pinned ? T.unpin : T.pin}
-                        active={user.pinned}
-                        onClick={() => togglePin(user.id)}
-                    />
-                    <ActionButton
-                        icon={<BellIcon />}
-                        tooltip={user.notify ? T.notifyOn : T.notifyOff}
-                        active={user.notify}
-                        onClick={() => toggleNotify(user.id)}
-                    />
-                    <ActionButton
-                        icon={<TargetIcon />}
-                        tooltip={user.autoJoin ? T.autoJoinOn : T.autoJoinOff}
-                        note={describeAutoJoinPace()}
-                        active={user.autoJoin}
-                        onClick={handleAutoJoin}
-                    />
+                    <PinButton {...buttonProps} />
+                    <NotifyButton {...buttonProps} />
+                    <AutoJoinButton {...buttonProps} />
                     {showsModView(voice) && <ModViewSplit userId={user.id} voice={voice} />}
                     <ActionButton
                         icon={<TrashIcon />}

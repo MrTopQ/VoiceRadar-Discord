@@ -39,6 +39,30 @@ interface ActionButtonProps {
     extraClass?: string;
 }
 
+export function HeadButton({ icon, label, active, extraClass, onClick }: {
+    icon: ReactNode;
+    label: string;
+    active?: boolean;
+    extraClass?: string;
+    onClick: (event: MouseEvent<HTMLElement>) => void;
+}) {
+    return (
+        <Hint text={label}>
+            {hintProps => (
+                <button
+                    {...hintProps}
+                    className={[cl("head-button"), active && cl("head-button-on"), extraClass].filter(Boolean).join(" ")}
+                    aria-label={label}
+                    aria-pressed={active}
+                    onClick={onClick}
+                >
+                    {icon}
+                </button>
+            )}
+        </Hint>
+    );
+}
+
 export function ActionButton({ icon, tooltip, note, onClick, active, danger, warn, disabled, extraClass }: ActionButtonProps) {
     const className = [
         cl("action"),

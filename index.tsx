@@ -31,7 +31,7 @@ import { closeJoinCards, showJoinCard } from "./components/JoinCard";
 import { closeJoinedModal, openJoinedModal } from "./components/JoinedModal";
 import { panelButtonProblems, VoiceRadarPanelButton } from "./components/PanelButton";
 import { closePersonInfo } from "./components/PersonInfoModal";
-import { closeRadarModal, openRadarModal, toggleRadarFromHotkey, windowProblems } from "./components/RadarModal";
+import { closeRadarModal, openRadarModal, showRadar, toggleRadarFromHotkey, windowProblems } from "./components/RadarModal";
 import { closeRadarPopout, confirmInPopout, stopWatchingMainWindow, toastInPopout, watchMainWindowOpens } from "./components/RadarPopout";
 import { setOwnWindowConfirm } from "./confirm";
 import { channelContextPatch, profileMenuPatch, userContextPatch } from "./contextMenus";
@@ -50,6 +50,7 @@ import { cancelBatches, forgetClicks, moveApiProblems } from "./moveApi";
 import { forgetMoveHistory } from "./moveHistory";
 import { forgetMoveAccess, movePermissionProblems } from "./movePermissions";
 import { nameProblems, resetUserLookups } from "./names";
+import { applyPluginSize, clearPluginSize } from "./pluginSize";
 import { presenceProblems, resetPresenceRequests } from "./presence";
 import { profileProblems } from "./profileFacts";
 import { resetQueue } from "./queue";
@@ -61,6 +62,7 @@ import { loadStore, shutdownStore } from "./store";
 import { resetStreamCache, streamProblems } from "./streams";
 import { setOwnWindowToast } from "./toast";
 import { setJoinedListOpener, startTracking, stopTracking, trackerProblems } from "./tracker";
+import { voiceControlProblems } from "./voiceControls";
 import { forgetVoiceSearch } from "./voiceSearch";
 import { loadWatchLog, shutdownWatchLog } from "./watchLog";
 
@@ -137,6 +139,7 @@ function checkDiscordApis(): ApiHealth {
         .merge(streamProblems())
         .merge(moveApiProblems())
         .merge(movePermissionProblems())
+        .merge(voiceControlProblems())
         .merge(subscriptionProblems())
         .merge(trackerProblems())
         .merge(windowProblems())
@@ -198,7 +201,7 @@ export default definePlugin({
     highestModViewRole,
 
     get toolboxActions() {
-        return { [T.menuOpenRadar]: openRadarModal };
+        return { [T.menuOpenRadar]: showRadar };
     },
 
     contextMenus: {
@@ -219,6 +222,7 @@ export default definePlugin({
         migrateLookupUrl();
         migrateJoinAlert();
         migrateAutoJoinCooldown();
+        applyPluginSize();
         setJoinCardShower(showJoinCard);
         setOwnWindowConfirm(confirmInPopout);
         setOwnWindowToast(toastInPopout);
@@ -272,6 +276,7 @@ export default definePlugin({
         setJoinCardShower(null);
         setOwnWindowConfirm(null);
         setOwnWindowToast(null);
+        clearPluginSize();
         stopWatchingMainWindow();
         removeGlobalContextMenuPatch(watchMenus);
         forgetMenuWatch();

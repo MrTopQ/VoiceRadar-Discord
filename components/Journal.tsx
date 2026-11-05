@@ -55,7 +55,7 @@ export function openChannelOrSay(channelId: string | null) {
     void spotlightChannel(channelId);
 }
 
-function channelOpener(channelId: string | null) {
+export function channelOpener(channelId: string | null) {
     return {
         role: "button",
         tabIndex: 0,
@@ -68,13 +68,16 @@ function channelOpener(channelId: string | null) {
     };
 }
 
-function dayHeading(day: number): string {
+export function dayHeading(day: number): string {
     if (day === dayStart(Date.now())) return T.infoToday;
     if (day === dayStart(Date.now(), -1)) return T.infoYesterday;
     return fullDate(day);
 }
 
-function rowLabel({ line, role, leaving }: JournalRow): ReactNode {
+/** What a row shows of a line, which is all the activity feed has too. */
+type LineRow = Pick<JournalRow, "line" | "role" | "leaving">;
+
+export function rowLabel({ line, role, leaving }: LineRow): ReactNode {
     switch (line.kind) {
         case "joined": return T.infoKindJoined;
         case "moved": return leaving
@@ -120,26 +123,26 @@ const ICONS: Record<SightingKind, ComponentType<{ size?: number; }>> = {
     "video-off": CameraOffIcon
 };
 
-function rowTone({ line, leaving }: JournalRow): string {
+export function rowTone({ line, leaving }: LineRow): string {
     return leaving ? "out" : TONES[line.kind];
 }
 
 /** The row that brought the person in, where the line up to the channel's name begins. */
 const entersStay = ({ line, role }: JournalRow) => role === "start" && (line.kind === "joined" || line.kind === "moved");
 
-function RowIcon({ row }: { row: JournalRow; }) {
+export function RowIcon({ row }: { row: LineRow; }) {
     const Icon = row.leaving ? LeaveIcon : row.line.kind === "seen" && row.role === "inside" ? PlugIcon : ICONS[row.line.kind];
     return <span className={cl("stay-icon")}><Icon size={15} /></span>;
 }
 
 /** The exact moment, or why only a range is known. */
-function rowHeading(line: Sighting): string {
+export function rowHeading(line: Sighting): string {
     const stamp = `${fullDate(line.at)}, ${formatClock(line.at)}`;
     if (line.after == null) return stamp;
     return line.kind === "gone" ? T.infoGoneTitle(stamp) : T.infoLateTitle;
 }
 
-function RowNotes({ row, day }: { row: JournalRow; day: number; }) {
+export function RowNotes({ row, day }: { row: JournalRow; day: number; }) {
     const { line, together, lasted, role } = row;
     const startsHere = role === "start" && !row.leaving;
 
@@ -179,7 +182,7 @@ function StayRow({ row, day, userId }: { row: JournalRow; day: number; userId: s
     ].filter(Boolean).join(" ");
 
     return (
-        <Hint text={line.channelId ? <PlaceHint line={line} userId={userId} heading={rowHeading(line)} /> : rowHeading(line)}>
+        <Hint interactive={line.channelId != null} text={line.channelId ? <PlaceHint line={line} userId={userId} heading={rowHeading(line)} /> : rowHeading(line)}>
             {hintProps => (
                 <div {...hintProps} {...channelOpener(line.channelId)} className={className}>
                     {line.after == null
@@ -216,7 +219,7 @@ function StayBlock({ part, day, userId }: { part: StayPart; day: number; userId:
 
     return (
         <div className={cl("stay") + (link != null ? " " + cl("stay-linked") : "")}>
-            <Hint text={channelId ? <NowHint channelId={channelId} /> : null}>
+            <Hint interactive text={channelId ? <NowHint channelId={channelId} /> : null}>
                 {hintProps => (
                     <div {...hintProps} {...channelOpener(channelId)} className={headClass}>
                         <SpeakerIcon size={14} />

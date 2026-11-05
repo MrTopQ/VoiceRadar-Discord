@@ -33,7 +33,7 @@ import { clearHistory, getAutoJoinTarget } from "../store";
 import { toast, ToastType } from "../toast";
 import { cl } from "./common";
 import { Hint } from "./Hint";
-import { ClockIcon, CloseIcon, GearIcon, GlobeIcon, KeyboardIcon, MicIcon, MicOffIcon, ReturnIcon, SearchIcon, TargetIcon, TrashIcon } from "./icons";
+import { ClockIcon, CloseIcon, GearIcon, GlobeIcon, KeyboardIcon, MicIcon, MicOffIcon, PulseIcon, ReturnIcon, SearchIcon, TargetIcon, TrashIcon } from "./icons";
 import { TYPE_TARGET_ATTRIBUTE } from "./Overlay";
 import { openPluginSettings } from "./pluginSettings";
 
@@ -258,7 +258,7 @@ export function FollowCard({ onChanged }: { onChanged: () => void; }) {
     );
 }
 
-export type Tab = "pinned" | "recent";
+export type Tab = "activity" | "pinned" | "recent";
 
 interface TabCounts {
     total: number;
@@ -290,6 +290,15 @@ export function Tabs({ tab, setTab, pinned, recent }: {
 
     return (
         <div className={cl("segments")} role="tablist">
+            <button
+                className={cl("segment") + " " + cl("tab") + " " + cl("tab-small") + (tab === "activity" ? " " + cl("segment-on") : "")}
+                role="tab"
+                aria-selected={tab === "activity"}
+                onClick={() => setTab("activity")}
+            >
+                <PulseIcon size={14} />
+                {T.activityButton}
+            </button>
             {button("pinned", T.sectionPinned, pinned)}
             {button("recent", T.sectionRecent, recent)}
         </div>

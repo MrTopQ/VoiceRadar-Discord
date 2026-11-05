@@ -38,6 +38,8 @@ const pad = (value: number) => String(value).padStart(2, "0");
 
 export const formatClock = (at: number) => `${pad(new Date(at).getHours())}:${pad(new Date(at).getMinutes())}`;
 
+export const formatClockSeconds = (at: number) => `${formatClock(at)}:${pad(new Date(at).getSeconds())}`;
+
 /** Midnight of the day a moment falls on, with a whole number of days added. */
 export function dayStart(at: number, plusDays = 0): number {
     const date = new Date(at);

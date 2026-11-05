@@ -129,6 +129,27 @@ export function getPresenceInfo(userId: string): PresenceInfo {
     };
 }
 
+export const INVISIBLE_NOTE = "invisible";
+
+/** What somebody is on right now, in short enough for a journal line, empty when Discord does not say. */
+export function deviceNote(userId: string): string {
+    const { status, platforms, known } = getPresenceInfo(userId);
+    if (platforms.length) return platforms.map(entry => `${entry.platform}:${entry.status}`).join(",");
+
+    // Discord reports on friends by itself, so only then does a missing status mean offline.
+    const reported = known || !!(RelationshipStore as any)?.isFriend?.(userId);
+    return status === "offline" && reported && voiceStateForUser(userId) ? INVISIBLE_NOTE : "";
+}
+
+export function readDeviceNote(note: string): PlatformPresence[] {
+    if (!note || note === INVISIBLE_NOTE) return [];
+
+    return note.split(",").map(entry => {
+        const [platform, status] = entry.split(":");
+        return { platform, status };
+    });
+}
+
 const PRESENCE_REQUEST_COOLDOWN_MS = 60_000;
 const PRESENCE_REQUEST_GAP_MS = 5000;
 const MAX_USERS_PER_REQUEST = 100;

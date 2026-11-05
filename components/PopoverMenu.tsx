@@ -17,10 +17,23 @@
 */
 
 import { createRoot, useEffect, useLayoutEffect, useRef, useState } from "@webpack/common";
+import type { ReactNode } from "react";
 
 import { T } from "../i18n";
 import { cl } from "./common";
-import { asElement } from "./dom";
+import { asElement, zoomOf } from "./dom";
+
+export interface PopoverLook {
+    role: string;
+    boxClass: string;
+    /** What takes the focus when it opens. */
+    focus: string;
+    label?: string;
+    /** Up and down walk through the buttons. */
+    arrowKeys?: boolean;
+    /** Keeps out of the plugin's size, so a slider for that size does not slip from under the pointer. */
+    fixedSize?: boolean;
+}
 
 export interface MenuPerson {
     id: string;
@@ -63,7 +76,7 @@ let closeOpenMenu: (() => void) | null = null;
 /** A press on the button of the open menu closes it, and the click that follows must not open it again. */
 let closedByItsButton: Element | null = null;
 
-function MenuBox({ anchor, view, choices, close }: { anchor: Element; view: Window; choices: MenuChoice[]; close: () => void; }) {
+function PopoverBox({ anchor, view, look, close, children }: { anchor: Element; view: Window; look: PopoverLook; close: () => void; children: ReactNode; }) {
     const ref = useRef<HTMLDivElement>(null);
     const [place, setPlace] = useState<{ left: number; top: number; } | null>(null);
 
@@ -78,9 +91,16 @@ function MenuBox({ anchor, view, choices, close }: { anchor: Element; view: Wind
         const top = below + height + EDGE_GAP > view.innerHeight ? spot.top - ANCHOR_GAP - height : below;
         const left = Math.min(Math.max(EDGE_GAP, spot.right - width), view.innerWidth - width - EDGE_GAP);
 
-        setPlace({ left, top: Math.max(EDGE_GAP, top) });
-        box.querySelector<HTMLElement>("button:not([aria-disabled='true'])")?.focus({ preventScroll: true });
+        const zoom = zoomOf(box);
+        setPlace({ left: left / zoom, top: Math.max(EDGE_GAP, top) / zoom });
     }, []);
+
+    // Only once it is placed, because a hidden element cannot take the focus.
+    const isPlaced = place != null;
+
+    useEffect(() => {
+        if (isPlaced) ref.current?.querySelector<HTMLElement>(look.focus)?.focus({ preventScroll: true });
+    }, [isPlaced]);
 
     useEffect(() => {
         const onPointerDown = (event: PointerEvent) => {
@@ -103,7 +123,7 @@ function MenuBox({ anchor, view, choices, close }: { anchor: Element; view: Wind
                 return;
             }
 
-            if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+            if (!look.arrowKeys || (event.key !== "ArrowDown" && event.key !== "ArrowUp")) return;
             event.preventDefault();
 
             const items = [...box.querySelectorAll<HTMLElement>("button:not([aria-disabled='true'])")];
@@ -130,10 +150,19 @@ function MenuBox({ anchor, view, choices, close }: { anchor: Element; view: Wind
     return (
         <div
             ref={ref}
-            className={cl("menu")}
-            role="menu"
+            className={look.boxClass}
+            role={look.role}
+            aria-label={look.label}
             style={place ?? { left: 0, top: 0, visibility: "hidden" }}
         >
+            {children}
+        </div>
+    );
+}
+
+function MenuChoices({ choices, close }: { choices: MenuChoice[]; close: () => void; }) {
+    return (
+        <>
             {choices.map(choice => (
                 <button
                     key={choice.label}
@@ -151,12 +180,12 @@ function MenuBox({ anchor, view, choices, close }: { anchor: Element; view: Wind
                     {choice.people?.length ? <PeoplePreview people={choice.people} /> : null}
                 </button>
             ))}
-        </div>
+        </>
     );
 }
 
-/** A small menu drawn in whatever window the button sits in, since Discord's menus open only in its main window. */
-export function openPopoverMenu(anchor: Element, choices: MenuChoice[]) {
+/** A small box under a button, drawn in whatever window the button sits in, since Discord's menus open only in its main window. */
+export function openPopover(anchor: Element, look: PopoverLook, render: ((close: () => void) => ReactNode) | null) {
     if (closedByItsButton === anchor) {
         closedByItsButton = null;
         return;
@@ -164,13 +193,13 @@ export function openPopoverMenu(anchor: Element, choices: MenuChoice[]) {
 
     closedByItsButton = null;
     closeOpenMenu?.();
-    if (!choices.length) return;
+    if (!render) return;
 
     const own = anchor.ownerDocument;
     const view = own.defaultView ?? window;
 
     const host = own.createElement("div");
-    host.className = cl("menu-host");
+    host.className = cl("menu-host") + (look.fixedSize ? " " + cl("menu-host-fixed") : "");
     own.body.appendChild(host);
 
     let root: ReturnType<typeof createRoot>;
@@ -194,5 +223,11 @@ export function openPopoverMenu(anchor: Element, choices: MenuChoice[]) {
     };
 
     closeOpenMenu = close;
-    root.render(<MenuBox anchor={anchor} view={view} choices={choices} close={close} />);
+    root.render(<PopoverBox anchor={anchor} view={view} look={look} close={close}>{render(close)}</PopoverBox>);
+}
+
+export function openPopoverMenu(anchor: Element, choices: MenuChoice[]) {
+    const look = { role: "menu", boxClass: cl("menu"), focus: "button:not([aria-disabled='true'])", arrowKeys: true };
+
+    openPopover(anchor, look, choices.length ? close => <MenuChoices choices={choices} close={close} /> : null);
 }

@@ -47,6 +47,11 @@ export const DEFAULT_JOIN_ALERT = CHIME_SOUND;
 const JOIN_ALERTS = [CHIME_SOUND, CUSTOM_SOUND, ALERT_OFF];
 export const DEFAULT_JOIN_SOUND_VOLUME = 60;
 
+export const DEFAULT_PLUGIN_SIZE = 100;
+export const MIN_PLUGIN_SIZE = 100;
+export const MAX_PLUGIN_SIZE = 150;
+export const PLUGIN_SIZE_STEP = 5;
+
 export const DEFAULT_RECENT_MARK_MINUTES = 1;
 export const MAX_RECENT_MARK_MINUTES = 5;
 
@@ -67,6 +72,16 @@ export const settings = definePluginSettings({
                 ...LANGUAGE_CODES.map(code => ({ label: LANGUAGE_LABELS[code] ?? code, value: code }))
             ];
         }
+    },
+    sizePercent: {
+        type: OptionType.SLIDER,
+        get description() {
+            return T.settingPluginSize;
+        },
+        markers: makeRange(MIN_PLUGIN_SIZE, MAX_PLUGIN_SIZE, PLUGIN_SIZE_STEP),
+        default: DEFAULT_PLUGIN_SIZE,
+        stickToMarkers: true,
+        onChange: () => void import("./pluginSize").then(module => module.applyPluginSize())
     },
     historyLimit: {
         type: OptionType.SLIDER,
@@ -213,6 +228,20 @@ export const settings = definePluginSettings({
         },
         default: DEFAULT_LOOKUP_URL
     },
+    openInOwnWindow: {
+        type: OptionType.BOOLEAN,
+        get description() {
+            return T.settingOpenInOwnWindow;
+        },
+        default: false
+    },
+    hideOwnWindow: {
+        type: OptionType.BOOLEAN,
+        get description() {
+            return T.settingHideOwnWindow;
+        },
+        default: false
+    },
     showPanelButton: {
         type: OptionType.BOOLEAN,
         get description() {
@@ -267,6 +296,13 @@ export function getJoinAlert(): string {
     const raw = String(settings.store.joinAlert ?? DEFAULT_JOIN_ALERT);
     return JOIN_ALERTS.includes(raw) ? raw : DEFAULT_JOIN_ALERT;
 }
+
+export function getPluginSize(): number {
+    const raw = Number(settings.store.sizePercent);
+    return Number.isFinite(raw) ? Math.min(MAX_PLUGIN_SIZE, Math.max(MIN_PLUGIN_SIZE, raw)) : DEFAULT_PLUGIN_SIZE;
+}
+
+export const getPluginScale = () => getPluginSize() / 100;
 
 export function getRecentMarkMs(): number {
     const raw = Number(settings.store.recentMarkMinutes);
